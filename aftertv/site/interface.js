@@ -30,12 +30,15 @@ const T = {
   tv2: 'In Chrome, use "Cast tab".',
   tvEcranAccueil: 'On iPhone, add this page to your Home Screen and it plays without browser bars.',
   apropos: 'About',
-  aproposTexte:
-    'After TV gathers every video I have cut over 5 years: 12 hours of film, cut shot by shot and bound in 12 volumes. Here they edit themselves live, to the sound you play.',
+  aproposTexte: [
+    'You play your music and a film cuts itself to it, live, shot after shot.',
+    "Rien is a VJ duo that has played techno nights for five years. Rien's library holds 1,137 videos, about 12 hours, cut shot by shot and put online in 12 volumes.",
+    'People kept asking to have the library at home, so Rien made it play itself.',
+  ],
   volumes:
     'Vol.1 Nature · Vol.2 City · Vol.3 Riot · Vol.4 Cinema · Vol.6 War · Vol.8 Cyber · Vol.9 Space · Vol.10 Music Videos · Vol.11 House',
   lien: 'Read more about After TV',
-  commentCaMarche: 'How it works',
+  commentCaMarche: 'How it works →',
   touches: 'F fullscreen · P panel · Esc close',
   panneauOuvrir: 'Open the After TV panel',
   panneauFermer: 'Close the After TV panel',
@@ -720,9 +723,8 @@ function sectionApropos() {
     'apropos',
     T.apropos,
     'apropos',
-    el('p', {}, T.aproposTexte),
+    ...T.aproposTexte.map((t) => el('p', {}, t)),
     el('p', { class: 'meta' }, T.volumes),
-    el('p', {}, el('a', { href: LIEN_APROPOS, target: '_blank', rel: 'noopener' }, T.lien)),
     el(
       'p',
       {},

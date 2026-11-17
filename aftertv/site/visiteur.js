@@ -43,8 +43,6 @@ const T = {
     'Tap along with the beat, or press Space. "1" marks the first beat of a bar, ÷2 and ×2 halve or double the tempo.',
   reglerTap: 'Adjust',
   styleEcoute: 'Listening to the track…',
-  coupes: 'Fast cuts',
-  aideCoupes: 'Turn them off to remove the bursts of very quick cuts.',
   source: 'Source',
   sOrdinateur: 'Computer sound',
   sMeilleur: 'Best',
@@ -213,7 +211,8 @@ function installerVisiteur(api) {
   let titreAuto = null;
   let genre = null,
     tempo = null,
-    temps = -1;
+    temps = -1,
+    moodEntendu = null;
   let moteur = null,
     moteurPromesse = null,
     moteurEchec = PARAMS.has('sans_moteur');
@@ -312,6 +311,7 @@ function installerVisiteur(api) {
       if (g?.statut !== 'ecoute') return;
       versDoc({ t: 'genre', g });
       genre = g.musique ? g.labels?.[0]?.label || null : null;
+      moodEntendu = g.mood === 'house' || g.mood === 'techno' ? g.mood : moodEntendu;
       majEcoute();
       majReconnaissance();
     });
@@ -350,6 +350,7 @@ function installerVisiteur(api) {
     tempo = null;
     temps = -1;
     etatTitre = null;
+    moodEntendu = null;
     let promesse;
     if (src === 'radio') {
       infos = { radio: nomRadio(radioN), morceau: null };
@@ -939,28 +940,6 @@ function installerVisiteur(api) {
     },
     { avant: 'style' },
   );
-  let switchCoupes = null;
-  api.ajouterSection(
-    {
-      id: 'coupes',
-      construire: () => {
-        switchCoupes = api.interrupteur({
-          id: 'switch-coupes',
-          libelle: T.coupes,
-          etiquette: true,
-          oui: coupesRapidesEffectives(lireReglages(), moinsDAnimation),
-          quand: (v) => {
-            ecrireReglages({ ...lireReglages(), coupesRapides: v });
-            moteur?.regler({ coupesRapides: v });
-          },
-        });
-        const s = section('coupes', switchCoupes.ligne, el('p', { class: 'aide' }, T.aideCoupes));
-        s.hidden = true;
-        return s;
-      },
-    },
-    { avant: 'qualite' },
-  );
   function taper() {
     if (tapDispo()) moteur?.tap();
   }
@@ -1188,6 +1167,7 @@ function installerVisiteur(api) {
         { class: 'reconnaissance', id: 'style-ecoute' },
         el('p', { class: 'style-titre', id: 'style-titre', hidden: true }),
         el('p', { class: 'style-infos', id: 'style-infos' }),
+        el('p', { class: 'style-vers', id: 'style-vers', hidden: true }),
         el(
           'div',
           { class: 'lampes', id: 'style-lampes' },
@@ -1230,6 +1210,12 @@ function installerVisiteur(api) {
     if (p.textContent !== texte) p.textContent = texte;
     p.hidden = !texte;
     p.classList.toggle('muet', !mots.length);
+    const choisi = lireReglages().style;
+    const vers = choisi === 'house' || choisi === 'techno' ? choisi : moodEntendu;
+    const pv = $('style-vers');
+    const tv = vers ? `→ ${vers === 'house' ? 'House' : 'Techno'}` : '';
+    if (pv.textContent !== tv) pv.textContent = tv;
+    pv.hidden = !tv;
   }
   const autoVhs = creerAuto();
   function vhsTemps(e, r) {
@@ -1249,20 +1235,10 @@ function installerVisiteur(api) {
       });
     else if (geste === 'eteindre') api.vhsAutomatique(false);
   }
-  function majCoupes() {
-    const s = document.querySelector('[data-section="coupes"]');
-    if (!s) return;
-    const montre = visiteurActif();
-    if (s.hidden !== !montre) {
-      s.hidden = !montre;
-      api.rafraichirSections();
-    }
-  }
   function majTout() {
     majEcoute();
     majSources();
     majTap();
-    majCoupes();
     api.majStyle();
     majReconnaissance();
     if (api.phase() === 'entree') majOccupe();
@@ -1291,6 +1267,7 @@ function installerVisiteur(api) {
     choisir: (s) => {
       ecrireReglages({ ...lireReglages(), style: s });
       moteur?.regler({ style: styleMoteur(s) });
+      majReconnaissance();
     },
   });
   api.definirInfo(() => {

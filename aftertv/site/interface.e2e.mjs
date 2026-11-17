@@ -558,9 +558,13 @@ try {
     await page.click("[data-section='tv'] summary");
     await page.click("[data-section='apropos'] summary");
     verifie(
-      (await page.getAttribute("[data-section='apropos'] a", 'href')) ===
-        'https://odcstudio.fr/vj-mapping/after-tv/',
-      'About : lien vers la page After TV',
+      await page.evaluate(
+        () =>
+          /Rien's library holds 1,137 videos/.test(
+            document.querySelector("[data-section='apropos']").textContent,
+          ) && !/I have/.test(document.querySelector("[data-section='apropos']").textContent),
+      ),
+      'About : le texte du projet, parlé par Rien',
     );
     verifie(
       (await page.getAttribute("[data-section='apropos'] a[data-lien='doc']", 'href')) === 'how-it-works',
@@ -954,13 +958,13 @@ try {
       (await page.getAttribute("[data-source='radio-1']", 'aria-checked')) === 'true',
       'Source : Cybernetic Broadcasting System cochée',
     );
-    for (const id of ['source', 'tap', 'coupes'])
+    for (const id of ['source', 'tap'])
       verifie(await visible(page, `[data-section='${id}']`), `panneau en veille + source : section ${id}`);
     const ordre = await page.evaluate(() =>
       [...document.querySelectorAll('#panneau-contenu > section')].map((x) => x.dataset.section).join(),
     );
     verifie(
-      ordre === 'maintenant,ecoute,source,tap,style,coupes,qualite,tv,apropos',
+      ordre === 'maintenant,ecoute,source,tap,style,qualite,tv,apropos',
       `ordre des sections (${ordre})`,
     );
     verifie(
@@ -1021,6 +1025,12 @@ try {
         !/Listening/.test(radioStyle.infos),
       `Style avec la radio : le titre, ses styles Discogs, trois lampes dont Discogs allumée (${JSON.stringify(radioStyle)})`,
     );
+    await page.click("[data-section='style'] [data-style='house']");
+    verifie(
+      (await page.textContent('#style-vers')) === '→ House' && (await visible(page, '#style-vers')),
+      'Style : la catégorie où va le montage (→ House)',
+    );
+    await page.click("[data-section='style'] [data-style='auto']");
     await page.evaluate(() =>
       document.querySelector("[data-section='style']").scrollIntoView({ block: 'center' }),
     );
@@ -1056,16 +1066,7 @@ try {
         JSON.stringify(await page.evaluate(() => window.__faux.regles.at(-1).tags ?? [])) === '[]',
       'pas de section Tags, le moteur ne reçoit aucun tag',
     );
-    verifie(
-      (await page.getAttribute('#switch-coupes', 'aria-checked')) === 'true',
-      'Fast cuts : allumées par défaut',
-    );
-    await page.click('#switch-coupes');
-    verifie(
-      (await page.evaluate(() => window.__faux.regles.at(-1).coupesRapides)) === false &&
-        (await page.getAttribute('#switch-coupes', 'aria-checked')) === 'false',
-      'Fast cuts : éteintes, le moteur suit',
-    );
+    verifie(!(await page.$("[data-section='coupes']")), 'Fast cuts : plus dans le volet');
     await page.keyboard.press('Escape');
     await page.evaluate(() => document.activeElement?.blur());
     await page.mouse.move(700, 450);
@@ -1093,8 +1094,8 @@ try {
     await page.waitForFunction(() => window.__visiteur?.ecoute(), null, { timeout: 8e3 });
     const r = await page.evaluate(() => window.__faux.regles[0]);
     verifie(
-      JSON.stringify(r.tags) === '[]' && r.coupesRapides === false && r.style === 'auto',
-      `rechargement : Fast cuts et style gardés, aucun tag (${JSON.stringify(r)})`,
+      JSON.stringify(r.tags) === '[]' && r.style === 'auto',
+      `rechargement : style gardé, aucun tag (${JSON.stringify(r)})`,
     );
     await dashboard(page, 3, 'Gamma');
     await page.waitForTimeout(800);

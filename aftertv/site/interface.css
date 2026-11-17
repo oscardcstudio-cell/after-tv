@@ -1480,6 +1480,12 @@ html.lecture #suggestion-radio p {
 .reconnaissance .style-infos.muet {
   color: var(--ink-muted);
 }
+.reconnaissance .style-vers {
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink);
+}
 .reconnaissance .style-titre {
   font-size: var(--t-meta);
   font-weight: 500;
