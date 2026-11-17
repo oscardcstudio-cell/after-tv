@@ -1200,7 +1200,9 @@ function installerVisiteur(api) {
       else delete l.dataset.etat;
     }
     const vus = new Set();
-    const mots = [genre, ...styles].filter((x) => x && !vus.has(x.toLowerCase()) && vus.add(x.toLowerCase()));
+    const mots = (styles.length ? styles : [genre]).filter(
+      (x) => x && !vus.has(x.toLowerCase()) && vus.add(x.toLowerCase()),
+    );
     const ligne = morceau ? ligneMorceau(morceau) : null;
     const pt = $('style-titre');
     pt.hidden = !ligne;
