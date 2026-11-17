@@ -30,10 +30,14 @@ def chemin_local(path: str, racine: str | None) -> str:
         m = re.match('^[A-Za-z]:\\\\VJ\\\\' + re.escape(DOSSIER) + '\\\\(.*)$', path, re.IGNORECASE)
         if m:
             return os.path.join(racine, *m.group(1).split('\\'))
+        if not os.path.isabs(path) and (not re.match('^[A-Za-z]:', path)):
+            return os.path.join(racine, *re.split('[\\\\/]', path))
     return path
 
 def theme(path: str) -> str:
     q = re.split('[\\\\/]', path)
+    if not os.path.isabs(path) and (not re.match('^[A-Za-z]:', path)):
+        return q[0].lower() if len(q) > 1 else ''
     i = next((k for k, x in enumerate(q) if DOSSIER in x.lower()), None)
     if i is None or i + 2 >= len(q):
         return ''

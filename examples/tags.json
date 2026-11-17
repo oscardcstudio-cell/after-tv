@@ -1,0 +1,86 @@
+{
+ "clips": {
+  "psyche-tache.mp4": {
+   "name": "psyche tache",
+   "mood": "house",
+   "roles": [
+    "drop"
+   ],
+   "vitesse": "rapide",
+   "one_shot": false,
+   "nsfw": 0
+  },
+  "mandelbulb-feconde.mp4": {
+   "name": "mandelbulb feconde",
+   "mood": "les deux",
+   "roles": [
+    "drop",
+    "break"
+   ],
+   "vitesse": "lent",
+   "one_shot": false,
+   "nsfw": 0
+  },
+  "tunnel.mp4": {
+   "name": "tunnel",
+   "mood": "house",
+   "roles": [
+    "drop"
+   ],
+   "vitesse": "rapide",
+   "one_shot": false,
+   "nsfw": 0
+  },
+  "sbeul.mp4": {
+   "name": "sbeul",
+   "mood": "house",
+   "roles": [
+    "drop"
+   ],
+   "vitesse": "rapide",
+   "one_shot": false,
+   "nsfw": 0
+  },
+  "psyche-tunnel.mp4": {
+   "name": "psyche tunnel",
+   "mood": "house",
+   "roles": [
+    "drop"
+   ],
+   "vitesse": "rapide",
+   "one_shot": false,
+   "nsfw": 0
+  },
+  "sortie-tunnel.mp4": {
+   "name": "sortie tunnel",
+   "mood": "house",
+   "roles": [
+    "drop"
+   ],
+   "vitesse": "rapide",
+   "one_shot": false,
+   "nsfw": 0
+  },
+  "intro-feconde.mp4": {
+   "name": "intro feconde",
+   "mood": "house",
+   "roles": [
+    "drop"
+   ],
+   "vitesse": "rapide",
+   "one_shot": false,
+   "nsfw": 0
+  },
+  "hal-feconde-i.mp4": {
+   "name": "Hal feconde I",
+   "mood": "les deux",
+   "roles": [
+    "drop",
+    "hyper"
+   ],
+   "vitesse": "rapide",
+   "one_shot": false,
+   "nsfw": 0
+  }
+ }
+}

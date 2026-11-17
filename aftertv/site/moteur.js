@@ -123,13 +123,28 @@ async function lireManifeste(medias, local, aCote = null) {
     texte: await fetch('/medias/manifest.json').then((r) => r.text()),
   };
 }
-function capterSysteme() {
+function capterSysteme({ onglet = false } = {}) {
   if (!navigator.mediaDevices?.getDisplayMedia) {
     return Promise.reject(
       Object.assign(new Error('ce navigateur ne sait pas capter le son de l’ordinateur'), {
         code: 'non_supporte',
       }),
     );
+  }
+  if (onglet) {
+    return navigator.mediaDevices.getDisplayMedia({
+      video: { displaySurface: 'browser' },
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        suppressLocalAudioPlayback: false,
+      },
+      preferCurrentTab: true,
+      selfBrowserSurface: 'include',
+      surfaceSwitching: 'exclude',
+      systemAudio: 'exclude',
+    });
   }
   return navigator.mediaDevices.getDisplayMedia({
     video: { displaySurface: 'monitor' },
@@ -323,7 +338,8 @@ async function creerMoteur({ config = {}, params = new URLSearchParams() } = {})
       options.ctx instanceof AudioContext && options.ctx.state !== 'closed'
         ? options.ctx
         : new AudioContext({ latencyHint: 'interactive' });
-    const capture = source === 'system' ? capterSysteme() : null;
+    const capture =
+      source === 'system' || source === 'tab' ? capterSysteme({ onglet: source === 'tab' }) : null;
     capture?.catch(() => {});
     const micro =
       source === 'mic' && options.micro && typeof options.micro.then === 'function' ? options.micro : null;

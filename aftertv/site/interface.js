@@ -1,5 +1,6 @@
 import { lireReglages, ecrireReglages } from './reglages.js';
 import { installerVisiteur } from './visiteur.js';
+import { creerVhs } from './vhs.js';
 const racine = document.documentElement;
 const DEBUG = new URLSearchParams(location.search).has('debug');
 const $ = (id) => document.getElementById(id);
@@ -17,6 +18,7 @@ const T = {
   auto: 'Auto',
   qualite: 'Quality',
   hdAuto: 'HD auto',
+  vhs: 'VHS',
   hd: 'HD',
   on: 'On',
   off: 'Off',
@@ -102,6 +104,7 @@ function construireEntree() {
         'div',
         { id: 'entree-actions' },
         el('button', { id: 'entree-principal', class: 'primaire', type: 'button' }),
+        el('div', { id: 'entree-lien', hidden: true }),
         el('div', { id: 'entree-radios', hidden: true }),
         el('div', { id: 'entree-secondaires' }),
         el('p', { id: 'entree-aide' }),
@@ -120,6 +123,7 @@ function definirEntree({
   aide = '',
   erreur = false,
   radios = null,
+  lien = null,
 } = {}) {
   const inv = $('entree-invitation');
   inv.textContent = invitation;
@@ -155,6 +159,9 @@ function definirEntree({
       : []),
   );
   $('entree-aide').textContent = aide;
+  const zoneLien = $('entree-lien');
+  zoneLien.hidden = !lien;
+  zoneLien.replaceChildren(...(lien ? [lien] : []));
 }
 function boutonChaine({ n, nom, logo, derniere = false, action, attrs = {} }) {
   return el(
@@ -610,14 +617,66 @@ function interrupteur({ id, libelle, oui = false, quand, etiquette = false }) {
   return { ligne, poser, bouton };
 }
 let switchHd = null;
+let switchVhs = null,
+  vhs = null,
+  vhsDemande = false,
+  vhsAuto = false;
 function sectionQualite() {
   switchHd = interrupteur({
     id: 'switch-hd',
-    libelle: T.hdAuto,
+    libelle: T.hd,
     oui: hdAuto(),
     quand: (auto) => choisirHd(auto),
   });
-  return section('qualite', tete(T.qualite), switchHd.ligne);
+  return section('qualite', switchHd.ligne);
+}
+function majVhs() {
+  if (window.afterTV && !window.afterTV.basculeVhs) window.afterTV.basculeVhs = (v) => basculeVhs(v);
+  if (!switchVhs) return;
+  switchVhs.ligne.hidden = !window.afterTV?.lirePixels;
+  switchVhs.poser(vhsDemande);
+}
+function effetVhs() {
+  if (!vhs && window.afterTV?.lirePixels) {
+    vhs = creerVhs({ couches: () => window.afterTV.couchesVhs() });
+  }
+  return vhs;
+}
+const quandVhs = [];
+async function basculeVhs(v = !vhsDemande) {
+  vhsDemande = !!v;
+  switchVhs?.poser(vhsDemande);
+  let ok = false;
+  if (!vhsDemande) {
+    if (!vhsAuto) effetVhs()?.eteindre();
+  } else {
+    ok = !!(await effetVhs()?.allumer());
+    if (!ok) {
+      vhsDemande = false;
+      switchVhs?.poser(false);
+    }
+  }
+  for (const fn of quandVhs) {
+    try {
+      fn(vhsDemande);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return ok;
+}
+async function vhsAutomatique(allumer) {
+  const e = effetVhs();
+  if (!e) return false;
+  if (allumer) {
+    await e.charger();
+    if (!e.assezRapide || vhsDemande) return false;
+    vhsAuto = await e.allumer();
+    return vhsAuto;
+  }
+  vhsAuto = false;
+  if (!vhsDemande) e.eteindre();
+  return true;
 }
 const hdForce = () => $('btn-hd')?.getAttribute('aria-pressed') === 'true';
 const enSd = () => !!window.afterTV?.sd?.();
@@ -715,6 +774,7 @@ function construirePanneau() {
   majMaintenant();
   majStyle();
   majHd();
+  majVhs();
   majPleinEcran();
   premiereSection();
 }
@@ -737,6 +797,7 @@ function ouvrirPanneau() {
   majMaintenant();
   majStyle();
   majHd();
+  majVhs();
   majPleinEcran();
   panneau.classList.add('ouvert');
   racine.classList.add('panneau-ouvert', 'reveille');
@@ -803,6 +864,7 @@ if (!racine.classList.contains('dans-cadre')) {
       battre,
       boutonChaine,
       reveiller: () => reveiller(),
+      vhsAutomatique,
     });
   } catch (e) {
     console.error(e);
@@ -816,7 +878,13 @@ if (!racine.classList.contains('dans-cadre')) {
     panneauOuvert,
     battre,
     avis,
+    vhs: () => vhs,
+    vhsAutomatique,
+    basculeVhs,
+    vhsDemande: () => vhsDemande,
+    quandVhs: (fn) => quandVhs.push(fn),
   };
+  majVhs();
 }
 export {
   ajouterSection,

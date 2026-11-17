@@ -19,7 +19,7 @@ SORTIE = os.path.join(REPO, 'aftertv', 'deploiement.json')
 REGLAGES = os.path.join(REPO, 'scripts', 'beatgrid', 'settings.json')
 BUCKET = 'after-tv'
 PROJET = 'after-tv'
-FICHIERS_PAGE = ('index.html', 'interface.js', 'interface.css', 'montage.js', 'miroir.js', 'oreille.html', 'oreille.js', 'moteur.js', 'reglages.js', 'paires.json', 'regles_montage.json', 'visiteur.js', 'radio.js', 'tags-en.js', 'audience.js', 'titre.js', 'adresses.js', 'image.js', 'how-it-works.html', 'how-it-works.js', 'how-it-works.css', 'radios/cbs.png', 'radios/disco-fetish.png', 'radios/tdm.png')
+FICHIERS_PAGE = ('index.html', 'interface.js', 'interface.css', 'montage.js', 'miroir.js', 'oreille.html', 'oreille.js', 'moteur.js', 'reglages.js', 'paires.json', 'regles_montage.json', 'visiteur.js', 'radio.js', 'tags-en.js', 'audience.js', 'titre.js', 'adresses.js', 'image.js', 'vhs.js', 'how-it-works.html', 'how-it-works.js', 'how-it-works.css', 'radios/cbs.png', 'radios/disco-fetish.png', 'radios/tdm.png', 'liens.js', 'services/youtube.svg', 'services/soundcloud.svg', 'services/spotify.svg', 'services/mixcloud.svg', 'services/applemusic.svg')
 MODULES_PAGE = {'beatgrid': ('kick.py', 'sections.py', 'structure.py', 'oreille_web.py', 'grid.py', 'sequencer.py', 'etiquettes.py', 'plans_loops.py', 'live.py', 'outils_auto.py', 'miroir_web.py', 'morceau.py', 'pilote_web.py', 'motifs.py', 'matiere.py', 'groove.py', 'montee_mix.py', 'memoire_set.py', 'montage_ecoute.py', 'densite.py', 'voix_instruments.py'), 'aftertv': ('reconnait.py',)}
 
 def wrangler_cmd() -> list[str]:
@@ -71,6 +71,8 @@ def construit_page(dossier: str, etat: dict, manifeste: dict | None) -> None:
     if os.path.isdir(icones):
         for f in os.listdir(icones):
             shutil.copy(os.path.join(icones, f), os.path.join(dossier, f))
+    shutil.copy(os.path.join(REPO, 'docs', 'glitch', 'ntsc.wasm'), os.path.join(dossier, 'ntsc.wasm'))
+    shutil.copy(os.path.join(REPO, 'docs', 'glitch', 'presets', 'site-defaut.json'), os.path.join(dossier, 'vhs-reglages.json'))
     os.makedirs(os.path.join(dossier, 'py'), exist_ok=True)
     for sous, noms in MODULES_PAGE.items():
         for nom in noms:

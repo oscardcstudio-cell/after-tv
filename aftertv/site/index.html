@@ -160,6 +160,19 @@
       #miroir video {
         transition: none;
       }
+      #vhs {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 19;
+        pointer-events: none;
+      }
+      body.silence #vhs,
+      body.trou #vhs {
+        visibility: hidden;
+      }
       #ecoute {
         display: none;
       }
@@ -555,9 +568,30 @@
         border-bottom: 1px solid var(--trait);
         border-radius: 8px 8px 0 0;
       }
+      #debug .dbg-tete {
+        flex-wrap: wrap;
+      }
       #debug .dbg-qui {
-        flex: 1;
+        flex: 1 1 100%;
         min-width: 0;
+      }
+      #debug .dbg-pied {
+        margin-top: 14px;
+        padding-top: 8px;
+        border-top: 1px solid var(--trait);
+      }
+      #debug .dbg-vhs {
+        background: none;
+        border: 0;
+        padding: 0;
+        font: inherit;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.4);
+        cursor: pointer;
+      }
+      #debug .dbg-vhs:hover,
+      #debug .dbg-vhs[aria-pressed='true'] {
+        color: rgba(255, 255, 255, 0.85);
       }
       #debug .dbg-age {
         margin-left: 8px;
@@ -600,35 +634,116 @@
         align-items: center;
         text-decoration: none;
       }
-      #debug .dbg-bouton-image,
-      #debug .dbg-bouton-image[aria-pressed='true'] {
-        align-self: center;
-        min-height: 20px;
-        padding: 0 8px;
+      #debug h3.dbg-h3-image {
+        display: flex;
+        align-items: center;
+      }
+      #debug .dbg-bouton-image {
+        margin-left: auto;
+        padding: 4px 8px;
+        cursor: pointer;
         font:
-          500 10px/1 system-ui,
+          500 13px/1 system-ui,
           -apple-system,
           'Segoe UI',
           sans-serif;
-        letter-spacing: 0.02em;
+        letter-spacing: 0;
         text-transform: none;
-        color: var(--discret);
+        color: var(--texte);
         background: transparent;
-        border-color: transparent;
+        border: 0;
+        border-radius: 6px;
+      }
+      #debug .dbg-bouton-image[aria-pressed='false'] {
+        color: var(--discret);
       }
       #debug .dbg-bouton-image::before {
         content: '';
         display: inline-block;
-        width: 6px;
-        height: 6px;
-        margin-right: 5px;
+        width: 8px;
+        height: 8px;
+        margin-right: 6px;
         border-radius: 50%;
         border: 1px solid var(--discret);
-        vertical-align: 0;
       }
       #debug .dbg-bouton-image[aria-pressed='true']::before {
         background: var(--texte);
         border-color: var(--texte);
+      }
+      #debug .dbg-bouton-image:focus-visible {
+        outline: 2px solid var(--texte);
+        outline-offset: 2px;
+      }
+      #debug .dbg-faders {
+        display: grid;
+        gap: 10px;
+        margin: 4px 0 12px;
+      }
+      #debug .dbg-faders.eteint {
+        opacity: 0.45;
+      }
+      #debug .dbg-fader-loop .nom {
+        font-size: 12px;
+        color: var(--discret);
+        margin-bottom: 4px;
+      }
+      #debug .dbg-fader-loop.wiggle .nom::after {
+        content: ' · wiggle';
+        color: var(--texte);
+      }
+      #debug .dbg-fader {
+        display: grid;
+        grid-template-columns: 76px 1fr 48px;
+        align-items: center;
+        gap: 8px;
+        height: 18px;
+        font-size: 12px;
+      }
+      #debug .dbg-fader .rail {
+        position: relative;
+        height: 4px;
+        background: rgba(242, 242, 242, 0.14);
+        border-radius: 2px;
+      }
+      #debug .dbg-fader .rail::before {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: -3px;
+        bottom: -3px;
+        width: 1px;
+        background: var(--discret);
+      }
+      #debug .dbg-fader .rail i {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        background: var(--texte);
+        border-radius: 2px;
+        transition:
+          left 120ms linear,
+          width 120ms linear;
+      }
+      #debug .dbg-fader .rail b {
+        position: absolute;
+        top: 50%;
+        width: 10px;
+        height: 10px;
+        margin: -5px 0 0 -5px;
+        border-radius: 50%;
+        background: var(--texte);
+        transition: left 120ms linear;
+      }
+      #debug .dbg-fader:not(.bouge) .rail b {
+        background: var(--discret);
+      }
+      #debug .dbg-fader .v {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: var(--discret);
+      }
+      #debug .dbg-fader.bouge .v {
+        color: var(--texte);
       }
       #debug h3 .etape {
         display: inline-grid;
@@ -1114,6 +1229,7 @@
       import { reglages as reglagesImage, creeWiggle, applique, filtre } from './image.js';
       import { lireReglages } from './reglages.js';
       import { parametreSur, estLocalHote, adresseSure } from './adresses.js';
+      import { vhsPossible } from './vhs.js';
       const q = new URLSearchParams(location.search);
       const config = await fetch('config.json', { cache: 'no-store' })
         .then((r) => (r.ok ? r.json() : {}))
@@ -1152,6 +1268,7 @@
       let montage = null;
       const medias = reglage('medias');
       const baseMedias = medias ? new URL(medias, location.href).href : racine;
+      const lirePixels = vhsPossible(baseMedias);
       const url = (rel) => new URL(rel, baseMedias).href;
       function finAttente() {
         document.getElementById('depart').hidden = true;
@@ -1354,6 +1471,7 @@
           const videos = [0, 1].map(() => {
             const v = document.createElement('video');
             Object.assign(v, { muted: true, playsInline: true, loop: true, preload: 'auto' });
+            if (lirePixels) v.crossOrigin = 'anonymous';
             v.setAttribute('muted', '');
             v.setAttribute('playsinline', '');
             div.appendChild(v);
@@ -1530,6 +1648,63 @@
           const f = r && image.actif ? filtre(applique(r, coup)) : 'none';
           if (c.div.style.filter !== f) c.div.style.filter = f;
         }
+        majFaders();
+      }
+      image.pose = poseFiltres;
+      const FADERS = [
+        ['lum', 'Lumière'],
+        ['contraste', 'Contraste'],
+        ['sat', 'Saturation'],
+        ['teinte', 'Teinte'],
+      ];
+      function majFaders() {
+        const dbg = document.getElementById('debug'),
+          zone = dbg && !dbg.hidden && dbg.querySelector('.dbg-faders');
+        if (!zone) return;
+        const coup = image.actif && image.coup && Date.now() < image.coup.jusqua ? image.coup : null;
+        const vues = (dernierPlan || []).filter((x) => x.opacite > 0.05);
+        const cle2 = vues.map((x) => x.couche + ':' + x.loop.id).join(',') + (image.actif ? '' : '|off');
+        if (zone.dataset.cle !== cle2) {
+          zone.dataset.cle = cle2;
+          zone.classList.toggle('eteint', !image.actif);
+          zone.innerHTML = vues.length
+            ? vues
+                .map(
+                  (x) =>
+                    `<div class="dbg-fader-loop" data-couche="${x.couche}"><div class="nom">${esc(x.loop.nom || 'couche ' + x.couche)}</div>` +
+                    FADERS.map(
+                      ([k, l]) =>
+                        `<div class="dbg-fader" data-k="${k}"><span class="l">${l}</span><span class="rail"><i></i><b></b></span><span class="v"></span></div>`,
+                    ).join('') +
+                    `</div>`,
+                )
+                .join('')
+            : `<div class="vide">Aucune loop à l'écran.</div>`;
+        }
+        for (const bloc of zone.querySelectorAll('.dbg-fader-loop')) {
+          const base2 = image.reglages.get(Number(bloc.dataset.couche));
+          const r =
+            base2 && image.actif ? applique(base2, coup) : { lum: 1, contraste: 1, sat: 1, teinte: 0 };
+          for (const f of bloc.querySelectorAll('.dbg-fader')) {
+            const k = f.dataset.k,
+              val = r[k];
+            const x =
+              k === 'teinte'
+                ? Math.max(-1, Math.min(1, val / 20))
+                : Math.max(-1, Math.min(1, (val - 1) / 0.5));
+            const fill = f.querySelector('i'),
+              pt = f.querySelector('b');
+            fill.style.left = 50 + Math.min(0, x) * 50 + '%';
+            fill.style.width = Math.abs(x) * 50 + '%';
+            pt.style.left = 50 + x * 50 + '%';
+            f.querySelector('.v').textContent =
+              k === 'teinte'
+                ? `${val > 0 ? '+' : ''}${Math.round(val)}°`
+                : `${val > 1 ? '+' : ''}${Math.round((val - 1) * 100)} %`;
+            f.classList.toggle('bouge', Math.abs(x) > 0.01);
+          }
+          bloc.classList.toggle('wiggle', !!coup);
+        }
       }
       function regleImage(etat, p) {
         const s = (etat && etat.son) || {};
@@ -1681,6 +1856,18 @@
         lecture,
         versDoc,
         releveLoops,
+        lirePixels,
+        couchesVhs: () =>
+          document.body.classList.contains('silence') || document.body.classList.contains('trou')
+            ? []
+            : [...couches.entries()]
+                .sort((a, b) => a[0] - b[0])
+                .map(([, c]) => ({
+                  opacite: parseFloat(c.div.style.opacity || '1'),
+                  fusion: c.div.style.mixBlendMode,
+                  filtre: c.div.style.filter,
+                  videos: c.videos.filter((v) => v.classList.contains('visible')),
+                })),
         sd: (v) => {
           if (v !== void 0) qualite.sd = !!v;
           return qualite.sd;
@@ -1933,6 +2120,9 @@
         image: 'image auto',
         imageAide:
           'Lumière, contraste, saturation et teinte réglés en direct (codex V93 à V96). Éteint : les loops telles quelles',
+        vhs: 'VHS',
+        vhsAide:
+          "L'effet VHS (ntsc-rs) à la main : allumé tant que le bouton est enfoncé. Le même que l'interrupteur VHS du panneau",
         doc: 'How it works',
         docAide:
           'La documentation interactive en anglais (pour un talk), dans un autre onglet : chaque étape avec ce qui se passe en ce moment',
@@ -2160,20 +2350,20 @@
         const rangee = (nom) => `<span class="lab">${esc(nom)}</span>${cases}`;
         panneau.lang = 'fr';
         panneau.innerHTML =
-          `<div class="dbg-tete"><div class="dbg-qui"><span class="source"></span><span class="dbg-age discret"></span><div class="dbg-chaine">${esc(LIBELLES.chaine)}</div></div><a class="dbg-bouton-expert dbg-doc" href="how-it-works.html" target="_blank" rel="noopener" lang="en" title="${esc(LIBELLES.docAide)}">${esc(LIBELLES.doc)}</a><button type="button" class="dbg-bouton-expert dbg-bouton-image" aria-pressed="${image.actif}" title="${esc(LIBELLES.imageAide)}">${esc(LIBELLES.image)}</button><button type="button" class="dbg-bouton-expert" aria-pressed="${expert}" title="${esc(LIBELLES.expertAide)}">${esc(LIBELLES.expert)}</button></div><section class="dbg-entendu"><h3><span class="etape">1</span>${esc(LIBELLES.etapeEntendu)}</h3><div class="dbg-titre" role="status" hidden></div><div class="dbg-silence" role="status" hidden></div><div class="vide dbg-attente" hidden></div><div class="dbg-son"><div class="dbg-pouls"><span class="dbg-kick" aria-hidden="true">${esc(LIBELLES.kick)}</span><span class="dbg-infos"></span></div><div class="dbg-grille" role="img" aria-label="${esc(LIBELLES.grilleAide)}" title="${esc(LIBELLES.grilleAide)}"><span class="lab"></span>` +
+          `<div class="dbg-tete"><div class="dbg-qui"><span class="source"></span><span class="dbg-age discret"></span><div class="dbg-chaine">${esc(LIBELLES.chaine)}</div></div><a class="dbg-bouton-expert dbg-doc" href="how-it-works.html" target="_blank" rel="noopener" lang="en" title="${esc(LIBELLES.docAide)}">${esc(LIBELLES.doc)}</a><button type="button" class="dbg-bouton-expert" aria-pressed="${expert}" title="${esc(LIBELLES.expertAide)}">${esc(LIBELLES.expert)}</button></div><section class="dbg-entendu"><h3><span class="etape">1</span>${esc(LIBELLES.etapeEntendu)}</h3><div class="dbg-titre" role="status" hidden></div><div class="dbg-silence" role="status" hidden></div><div class="vide dbg-attente" hidden></div><div class="dbg-son"><div class="dbg-pouls"><span class="dbg-kick" aria-hidden="true">${esc(LIBELLES.kick)}</span><span class="dbg-infos"></span></div><div class="dbg-grille" role="img" aria-label="${esc(LIBELLES.grilleAide)}" title="${esc(LIBELLES.grilleAide)}"><span class="lab"></span>` +
           [1, 2, 3, 4].map((n) => `<span class="tn${n > 1 ? ' debut' : ''}">${n}</span>`).join('') +
           rangee(LIBELLES.pasKick) +
           rangee(LIBELLES.pasCaisse) +
           rangee(LIBELLES.pasHat) +
           `</div><div class="dbg-spectre-zone"><div class="dbg-spectre" role="img" aria-label="${esc(LIBELLES.spectreAide)}" title="${esc(LIBELLES.spectreAide)}">` +
           `<span class="b"><i></i></span>`.repeat(24) +
-          `</div><div class="dbg-bornes" aria-hidden="true"><span style="grid-column:1/3">${esc(LIBELLES.grave)}</span><span class="m" style="grid-column:3/12">${esc(LIBELLES.medium)}</span><span class="a" style="grid-column:12/25">${esc(LIBELLES.aigu)}</span></div></div><div class="discret dbg-spectre-absent" hidden>${esc(LIBELLES.spectreAbsent)}</div></div></section><div class="dbg-corps"></div>`;
+          `</div><div class="dbg-bornes" aria-hidden="true"><span style="grid-column:1/3">${esc(LIBELLES.grave)}</span><span class="m" style="grid-column:3/12">${esc(LIBELLES.medium)}</span><span class="a" style="grid-column:12/25">${esc(LIBELLES.aigu)}</span></div></div><div class="discret dbg-spectre-absent" hidden>${esc(LIBELLES.spectreAbsent)}</div></div></section><div class="dbg-corps"></div><div class="dbg-pied"${lirePixels ? '' : ' hidden'}><button type="button" class="dbg-vhs" aria-pressed="false" title="${esc(LIBELLES.vhsAide)}">${esc(LIBELLES.vhs)} off</button></div>`;
         const $ = (s) => panneau.querySelector(s);
         const c = [...panneau.querySelectorAll('.dbg-grille .c')];
         vivant = {
           source: $('.dbg-tete .source'),
           age: $('.dbg-age'),
-          bouton: $('button.dbg-bouton-expert:not(.dbg-bouton-image)'),
+          bouton: $('button.dbg-bouton-expert:not(.dbg-bouton-image):not(.dbg-bouton-vhs)'),
           entendu: $('.dbg-entendu'),
           titreRecherche: $('.dbg-titre'),
           silence: $('.dbg-silence'),
@@ -2196,15 +2386,31 @@
           finKick: 0,
           etatVu: null,
         };
-        const boutonImage = $('.dbg-bouton-image');
-        boutonImage.onclick = () => {
+        const boutonVhs = $('.dbg-vhs');
+        const majBoutonVhs = (oui) => {
+          boutonVhs.setAttribute('aria-pressed', String(!!oui));
+          boutonVhs.textContent = `${LIBELLES.vhs} ${oui ? 'on' : 'off'}`;
+        };
+        majBoutonVhs(window.__interface?.vhsDemande?.());
+        window.__interface?.quandVhs?.(majBoutonVhs);
+        boutonVhs.onclick = async () => {
+          const bascule = window.__interface?.basculeVhs || window.afterTV.basculeVhs;
+          if (!bascule) return;
+          boutonVhs.disabled = true;
+          await bascule(boutonVhs.getAttribute('aria-pressed') !== 'true');
+          boutonVhs.disabled = false;
+        };
+        panneau.addEventListener('click', (ev) => {
+          if (!ev.target.closest('.dbg-bouton-image')) return;
           image.actif = !image.actif;
-          boutonImage.setAttribute('aria-pressed', String(image.actif));
+          panneau
+            .querySelectorAll('.dbg-bouton-image')
+            .forEach((x) => x.setAttribute('aria-pressed', String(image.actif)));
           try {
             localStorage.setItem(CLE_IMAGE, image.actif ? '1' : '0');
           } catch {}
           poseFiltres();
-        };
+        });
         vivant.bouton.onclick = () => {
           vivant.expert = !vivant.expert;
           vivant.bouton.setAttribute('aria-pressed', String(vivant.expert));
@@ -2427,7 +2633,7 @@
       }
       function blocDeduit(e, cx) {
         const { s, f } = cx;
-        const titre = `<h3><span class="etape">2</span>${esc(LIBELLES.etapeDeduit)}</h3>`;
+        const titre = `<h3 class="dbg-h3-image"><span class="etape">2</span>${esc(LIBELLES.etapeDeduit)}<button type="button" class="dbg-bouton-image" aria-pressed="${image.actif}" title="${esc(LIBELLES.imageAide)}">${esc(LIBELLES.image)}</button></h3><div class="dbg-faders"></div>`;
         if (!s.ecoute)
           return `<section>${titre}<div class="vide">${esc(LIBELLES.ecouteAbsente)}</div></section>`;
         const g = cx.g;
@@ -3072,6 +3278,7 @@
           dernierHtml = html;
           v.corps.innerHTML = html;
         }
+        majFaders();
       }
       setInterval(rendDebug, 250);
       boutonDebug.onclick = () => basculeDebug();

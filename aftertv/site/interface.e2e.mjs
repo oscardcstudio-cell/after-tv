@@ -158,6 +158,18 @@ const serveur = createServer(async (req, res) => {
   if (chemin === 'moteur.js') return envoie(TYPES['.js'], FAUX_MOTEUR);
   if (chemin === 'config.json')
     return envoie(TYPES['.json'], JSON.stringify({ manifest: 'data/manifest.json' }));
+  if (chemin === 'after-tv/titre-styles')
+    return envoie(
+      TYPES['.json'],
+      JSON.stringify({ styles: ['Electro', 'Synth-pop'], genres: ['Electronic'] }),
+    );
+  if (chemin === 'ntsc.wasm')
+    return envoie('application/wasm', await readFile(join(SITE, '..', '..', 'docs', 'glitch', 'ntsc.wasm')));
+  if (chemin === 'vhs-reglages.json')
+    return envoie(
+      TYPES['.json'],
+      await readFile(join(SITE, '..', '..', 'docs', 'glitch', 'presets', 'site-defaut.json')),
+    );
   if (chemin.startsWith('..')) {
     res.writeHead(404);
     return res.end();
@@ -535,8 +547,8 @@ try {
     );
     const textes = await page.evaluate(() => document.getElementById('panneau').innerText);
     verifie(
-      ['Now playing', 'Style', 'House', 'Techno', 'All', 'Quality', 'HD auto', 'Watch on TV', 'About'].every(
-        (t) => textes.toLowerCase().includes(t.toLowerCase()),
+      ['Now playing', 'Style', 'House', 'Techno', 'All', 'HD', 'Watch on TV', 'About'].every((t) =>
+        textes.toLowerCase().includes(t.toLowerCase()),
       ),
       'panneau : sections en anglais',
     );
@@ -575,6 +587,23 @@ try {
       "bouton debug : la console s'ouvre",
     );
     await capture(page, 'debug-1920');
+    verifie(await visible(page, '#debug .dbg-vhs'), 'moniteur : bouton VHS visible');
+    await page.evaluate(() => {
+      delete window.afterTV.basculeVhs;
+    });
+    await page.click('#debug .dbg-vhs');
+    await page.waitForFunction(() => !document.getElementById('vhs')?.hidden, null, { timeout: 15e3 });
+    verifie(
+      (await page.getAttribute('#debug .dbg-vhs', 'aria-pressed')) === 'true',
+      "moniteur : VHS enfoncé, l'effet est à l'écran",
+    );
+    await capture(page, 'debug-vhs-1920');
+    await page.click('#debug .dbg-vhs');
+    await page.waitForFunction(() => document.getElementById('vhs').hidden, null, { timeout: 5e3 });
+    verifie(
+      (await page.getAttribute('#debug .dbg-vhs', 'aria-pressed')) === 'false',
+      'moniteur : VHS relâché, le film revient tel quel',
+    );
     await page.click('#bouton-debug');
     verifie(!(await visible(page, '#debug')), 'bouton debug : la console se ferme');
     await page.keyboard.press('f');
@@ -616,8 +645,49 @@ try {
       'Quality : HD auto allumé par défaut',
     );
     verifie(
+      await page.evaluate(() => {
+        const q = document.querySelector("[data-section='qualite']");
+        return (
+          !q.querySelector('.tete-section') &&
+          q.querySelector('.ligne-switch').firstElementChild.textContent === 'HD' &&
+          !/quality|auto/i.test(q.innerText)
+        );
+      }),
+      'Quality : une ligne « HD », sans titre ni « auto »',
+    );
+    verifie(
       !(await page.$('#panneau-plein')) && !(await page.$('[data-hd]')),
-      'Quality : un seul interrupteur, pas de bouton plein écran ni de paire HD auto / HD',
+      'Quality : pas de bouton plein écran ni de paire HD auto / HD',
+    );
+    verifie(
+      !(await page.$('#panneau #switch-vhs')) && !(await page.$('#panneau .vhs-discret')),
+      'volet : pas de bouton VHS',
+    );
+    verifie(await page.evaluate(() => window.__interface.basculeVhs(true)), "VHS : l'effet s'allume");
+    await page.waitForFunction(
+      () => {
+        const c = document.getElementById('vhs');
+        return c && !c.hidden && c.width > 0;
+      },
+      null,
+      { timeout: 15e3 },
+    );
+    const vhsImage = await page.evaluate(() => {
+      const c = document.getElementById('vhs');
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let s = 0;
+      for (let i = 0; i < d.length; i += 4 * 97) s += d[i] + d[i + 1] + d[i + 2];
+      return { w: c.width, h: c.height, lumiere: s };
+    });
+    verifie(
+      vhsImage.h === 480 && vhsImage.lumiere > 0,
+      `VHS allumé : l'image du film passe par ntsc-rs (${JSON.stringify(vhsImage)})`,
+    );
+    await capture(page, 'C-vhs-1440');
+    await page.evaluate(() => window.__interface.basculeVhs(false));
+    verifie(
+      await page.evaluate(() => document.getElementById('vhs').hidden),
+      'VHS éteint : le film revient tel quel',
     );
     await page.click('#switch-hd');
     verifie(
@@ -931,10 +1001,27 @@ try {
       await page.waitForTimeout(300);
     }
     await capture(page, 'C-tap-1440');
-    verifie(
-      (await visible(page, '#style-ecoute')) && !(await visible(page, '#style-lampes')),
-      'Style avec la radio : les infos, pas les lampes de reconnaissance',
+    await page.waitForFunction(
+      () => document.querySelector("[data-lampe='discogs']")?.dataset.etat === 'trouve',
+      null,
+      { timeout: 5e3 },
     );
+    const radioStyle = await page.evaluate(() => ({
+      lampes: [...document.querySelectorAll('#style-lampes .lampe')].map((l) => l.dataset.etat || '-').join(),
+      titre: document.getElementById('style-titre').textContent,
+      infos: document.getElementById('style-infos').textContent,
+    }));
+    verifie(
+      radioStyle.lampes === '-,-,trouve' &&
+        radioStyle.titre &&
+        radioStyle.infos.includes('Electro · Synth-pop') &&
+        !/Listening/.test(radioStyle.infos),
+      `Style avec la radio : le titre, ses styles Discogs, trois lampes dont Discogs allumée (${JSON.stringify(radioStyle)})`,
+    );
+    await page.evaluate(() =>
+      document.querySelector("[data-section='style']").scrollIntoView({ block: 'center' }),
+    );
+    await capture(page, 'C-style-radio-1440');
     await page.click('#tap-tap');
     await ouvrirPli(page, 'reglages-tap');
     await page.click('#tap-un');
@@ -1168,6 +1255,15 @@ try {
       await page.waitForTimeout(300);
     }
     await capture(page, 'C-tap-375');
+    await page.waitForFunction(
+      () => document.querySelector("[data-lampe='discogs']")?.dataset.etat === 'trouve',
+      null,
+      { timeout: 5e3 },
+    );
+    await page.evaluate(() =>
+      document.querySelector("[data-section='style']").scrollIntoView({ block: 'center' }),
+    );
+    await capture(page, 'C-style-radio-375');
     await ctx.close();
   }
   {

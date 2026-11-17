@@ -1,7 +1,9 @@
 import { lireReglages, ecrireReglages, coupesRapidesEffectives } from './reglages.js';
 import { RADIOS, infosRadio, flux, nomRadio, SITE, ligneMorceau } from './radio.js';
 import { demarrerAudience } from './audience.js';
+import { lecteurDuLien, SERVICES } from './liens.js';
 import { creerTitre } from './titre.js';
+import { creerAuto } from './vhs.js';
 const T = {
   invitation: 'Play some music, and twelve volumes of film cut themselves to it, live.',
   invitationSansCapture: 'Pick a sound source and the film cuts itself to it, live.',
@@ -50,11 +52,20 @@ const T = {
   sAucune: 'Off',
   touchesTap: 'F fullscreen · Space tap · P panel · Esc close',
   touches: 'F fullscreen · P panel · Esc close',
+  lienColler: 'Paste a link',
+  lienServices: 'Paste a YouTube, SoundCloud, Spotify, Mixcloud or Apple Music link.',
+  lienVide: 'The clipboard is empty. Copy a link first.',
+  lienInconnu: 'This link is not from YouTube, SoundCloud, Spotify, Mixcloud or Apple Music.',
+  lienBloque: 'The browser would not read the clipboard. Press Ctrl+V (⌘V on a Mac) instead.',
+  fermerLecteur: 'Close the player',
+  ongletRefuse: 'The music plays, but the film cannot hear it. Share this tab so the film can follow.',
+  pasDeSonOnglet: 'The tab shared no sound. Tick "Share tab audio", then try again.',
 };
 const svg = (d, taille, cls) =>
   `<svg class="${cls}" viewBox="0 0 24 24" width="${taille}" height="${taille}" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const PLUS_MOINS = svg('<path d="M12 6v12M6 12h12"/>', 16, 'plus') + svg('<path d="M6 12h12"/>', 16, 'moins');
 const FLECHE = svg('<path d="M5 12h14M13 6l6 6-6 6"/>', 16, 'fleche');
+const RELAIS_STYLES = '/after-tv/titre-styles';
 const PARAMS = new URLSearchParams(location.search);
 const SUGGESTION_DELAI_MS = Number(globalThis.__suggestionDelaiMs) || 5e3;
 const SUGGESTION_VISIBLE_MS = Number(globalThis.__suggestionVisibleMs) || 8e3;
@@ -122,7 +133,12 @@ function installerVisiteur(api) {
         partie_raison: r.raison ?? null,
         partie_depuis: r.depuis ?? null,
         niveau_db: niveaux.length ? Math.max(...niveaux) : null,
-        source: source === 'system' ? 'loopback' : source === 'radio' ? `radio:${nomRadio(radioN)}` : 'micro',
+        source:
+          source === 'system' || source === 'tab'
+            ? 'loopback'
+            : source === 'radio'
+              ? `radio:${nomRadio(radioN)}`
+              : 'micro',
         ...(e.son || {}),
       };
     }
@@ -169,6 +185,8 @@ function installerVisiteur(api) {
     moteurEchec = PARAMS.has('sans_moteur');
   let jeton = 0,
     enAttente = false;
+  let lecteur = null;
+  let messageLien = '';
   const sourceMoteur = () => !!source && !radioSeule;
   const visiteurActif = () => sourceMoteur() && !direct();
   const tapDispo = () => visiteurActif() && ecoute;
@@ -227,11 +245,18 @@ function installerVisiteur(api) {
     m.on('temps', ({ e, r, reactions, pos }) => {
       if (!sourceMoteur() || !ecoute || direct()) return;
       nourrir(pourConsole(e, r, pos));
-      versDoc({ t: 'oreille', r, reactions, pos, source: source === 'system' ? 'loopback' : source });
+      versDoc({
+        t: 'oreille',
+        r,
+        reactions,
+        pos,
+        source: source === 'system' || source === 'tab' ? 'loopback' : source,
+      });
       api.battre();
       temps = Number.isFinite(pos) ? pos : (temps + 1) % 4;
       majTap();
       majSequenceur(r, temps);
+      vhsTemps(e, r);
     });
     m.on('tempo', (t) => {
       tempo = t?.bpm || null;
@@ -254,7 +279,7 @@ function installerVisiteur(api) {
       if (s.phase === 'listening') {
         ecoute = true;
         erreur = null;
-        if (s.source === 'system' || s.source === 'mic') titreAuto?.demarrer();
+        if (['system', 'tab', 'mic'].includes(s.source)) titreAuto?.demarrer();
         else titreAuto?.arreter();
         if (['system', 'radio', 'mic'].includes(s.source))
           ecrireReglages({ ...lireReglages(), source: s.source });
@@ -271,6 +296,7 @@ function installerVisiteur(api) {
     clearTimeout(relanceRadio);
     relanceRadio = null;
     if (depuis !== 'auto') erreur = null;
+    if (src !== 'tab') fermerLecteur();
     if (src === 'radio') {
       radioN = [1, 2, 3].includes(n) ? n : radioN;
       ecrireReglages({ ...lireReglages(), radio: radioN });
@@ -420,6 +446,7 @@ function installerVisiteur(api) {
   function arreterTout() {
     jeton++;
     enAttente = false;
+    fermerLecteur();
     clearTimeout(relanceRadio);
     relanceRadio = null;
     erreur = null;
@@ -472,6 +499,15 @@ function installerVisiteur(api) {
       return;
     }
     source = null;
+    if (src === 'tab' && (code === 'refuse' || code === 'pas_de_son')) {
+      erreur = {
+        texte: code === 'refuse' ? T.ongletRefuse : T.pasDeSonOnglet,
+        actions: [{ texte: T.reessayer, action: () => choisir('tab') }],
+      };
+      api.avis?.(erreur.texte);
+      majTout();
+      return;
+    }
     if (code === 'refuse' && src === 'system') {
       if (depuis === 'entree') {
         api.revenir();
@@ -517,6 +553,95 @@ function installerVisiteur(api) {
     if (src === 'off') arreterTout();
     else lancer(src, { ...opts, depuis: 'panneau' });
   }
+  const iconesServices = () =>
+    el(
+      'span',
+      { class: 'services', 'aria-hidden': 'true' },
+      ...SERVICES.map((s) => el('span', { class: `service service-${s.id}` })),
+    );
+  function boutonLien() {
+    return el(
+      'div',
+      { class: 'lien' },
+      el(
+        'button',
+        {
+          class: 'coller',
+          type: 'button',
+          'data-coller': '',
+          title: T.lienServices,
+          onclick: () => collerLien(),
+        },
+        iconesServices(),
+        el('span', { class: 'coller-texte' }, T.lienColler),
+      ),
+      el('p', { class: 'lien-message', role: 'status' }),
+    );
+  }
+  async function collerLien() {
+    let texte = null;
+    try {
+      texte = await navigator.clipboard.readText();
+    } catch {
+      texte = null;
+    }
+    if (texte === null) {
+      direLien(T.lienBloque);
+      return;
+    }
+    ouvrirLien(texte);
+  }
+  function ouvrirLien(texte) {
+    const l = lecteurDuLien(texte);
+    if (!l) {
+      direLien(String(texte || '').trim() ? T.lienInconnu : T.lienVide);
+      return;
+    }
+    direLien('');
+    montrerLecteur(l);
+    choisir('tab');
+  }
+  function direLien(texte) {
+    messageLien = texte;
+    for (const p of document.querySelectorAll('.lien-message')) p.textContent = texte;
+  }
+  function montrerLecteur(l) {
+    fermerLecteur();
+    const cadre = el('iframe', {
+      src: l.src,
+      title: l.nom,
+      height: l.hauteur,
+      loading: 'eager',
+      allow: 'autoplay; encrypted-media; clipboard-write; picture-in-picture; fullscreen',
+      referrerpolicy: 'strict-origin-when-cross-origin',
+    });
+    lecteur = el(
+      'div',
+      { id: 'lecteur-lien', class: 'flottant', 'data-service': l.service },
+      cadre,
+      el('button', {
+        class: 'fermer-lecteur',
+        type: 'button',
+        'aria-label': T.fermerLecteur,
+        title: T.fermerLecteur,
+        onclick: () => choisir('off'),
+        html: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+      }),
+    );
+    document.body.append(lecteur);
+  }
+  function fermerLecteur() {
+    if (!lecteur) return;
+    lecteur.remove();
+    lecteur = null;
+  }
+  addEventListener('paste', (ev) => {
+    if (ev.target?.closest?.('input, textarea, [contenteditable="true"]')) return;
+    const texte = ev.clipboardData?.getData('text') || '';
+    if (!lecteurDuLien(texte)) return;
+    ev.preventDefault();
+    ouvrirLien(texte);
+  });
   const creditRadio = () =>
     el(
       'p',
@@ -559,6 +684,7 @@ function installerVisiteur(api) {
       api.definirEntree({
         invitation: T.invitation,
         principal: { texte: T.ordinateur, action: () => choisir('system') },
+        lien: boutonLien(),
         radios: radiosEntree(),
         secondaires: [boutonMicro(), boutonVoir()],
         aide: T.aidePartage,
@@ -599,7 +725,23 @@ function installerVisiteur(api) {
     });
     majOccupe();
   }
+  function majLien() {
+    for (const b of document.querySelectorAll('[data-coller]')) {
+      const chauffe = !moteur && !moteurEchec;
+      b.disabled = !moteur;
+      if (chauffe) b.setAttribute('aria-busy', 'true');
+      else b.removeAttribute('aria-busy');
+      b.closest('.lien').hidden = direct();
+      b.setAttribute('aria-pressed', String(source === 'tab'));
+      const t = b.querySelector('.coller-texte');
+      const texte = chauffe ? T.chauffe : T.lienColler;
+      if (t.textContent !== texte) t.textContent = texte;
+    }
+    for (const p of document.querySelectorAll('.lien-message'))
+      if (p.textContent !== messageLien) p.textContent = messageLien;
+  }
   function majOccupe() {
+    majLien();
     const p = $('entree-principal');
     if (!p) return;
     const occupe = principalPartage && !moteur && !moteurEchec;
@@ -819,7 +961,7 @@ function installerVisiteur(api) {
             el('span', { html: FLECHE }),
           ),
         );
-        box.append(sys2);
+        box.append(sys2, boutonLien());
       }
       for (const r of RADIOS) {
         autres.push(
@@ -875,6 +1017,7 @@ function installerVisiteur(api) {
       if (libelle.textContent !== texte) libelle.textContent = texte;
     }
     for (const b of box.querySelectorAll("[data-source='system'], [data-source='mic']")) b.hidden = direct();
+    majLien();
     const actuelle = source === 'radio' ? `radio-${radioN}` : source || 'off';
     for (const b of box.querySelectorAll('[data-source]'))
       b.setAttribute('aria-checked', String(b.dataset.source === actuelle));
@@ -882,7 +1025,7 @@ function installerVisiteur(api) {
     if (pliSources) {
       pliSources.querySelector('summary').hidden = direct();
       if (direct()) pliSources.open = true;
-      else if (actuelle !== pliSources.dataset.actuelle && actuelle !== 'system' && actuelle !== 'off')
+      else if (actuelle !== pliSources.dataset.actuelle && !['system', 'tab', 'off'].includes(actuelle))
         pliSources.open = true;
       pliSources.dataset.actuelle = actuelle;
     }
@@ -940,6 +1083,27 @@ function installerVisiteur(api) {
     new MutationObserver(copie).observe(src, { childList: true, characterData: true, subtree: true });
     copie();
   }
+  let stylesRadio = { cle: null, etat: '', styles: [], genres: [] };
+  async function chercherStylesRadio(m) {
+    const cle = m?.artiste && m?.titre ? `${m.artiste}|${m.titre}` : null;
+    if (cle === stylesRadio.cle) return;
+    stylesRadio = { cle, etat: cle ? 'cherche' : '', styles: [], genres: [] };
+    majReconnaissance();
+    if (!cle) return;
+    let r = null;
+    try {
+      const q = new URLSearchParams({ artiste: m.artiste, titre: m.titre });
+      const rep = await fetch(`${RELAIS_STYLES}?${q}`);
+      r = rep.ok ? await rep.json() : null;
+    } catch {
+      r = null;
+    }
+    if (stylesRadio.cle !== cle) return;
+    const styles = Array.isArray(r?.styles) ? r.styles : [],
+      genres = Array.isArray(r?.genres) ? r.genres : [];
+    stylesRadio = { cle, etat: styles.length || genres.length ? 'trouve' : '', styles, genres };
+    majReconnaissance();
+  }
   function majReconnaissance() {
     const sec = document.querySelector('[data-section="style"]');
     if (!sec) return;
@@ -949,6 +1113,7 @@ function installerVisiteur(api) {
       bloc = el(
         'div',
         { class: 'reconnaissance', id: 'style-ecoute' },
+        el('p', { class: 'style-titre', id: 'style-titre', hidden: true }),
         el('p', { class: 'style-infos', id: 'style-infos' }),
         el(
           'div',
@@ -963,16 +1128,18 @@ function installerVisiteur(api) {
     const montre = visiteurActif() && ecoute;
     bloc.hidden = !montre;
     if (!montre) return;
-    const titre = source === 'system' || source === 'mic';
-    $('style-lampes').hidden = !titre;
-    const t = etatTitre || {};
+    const radio = source === 'radio';
+    const t = radio ? {} : etatTitre || {};
     const cherche = [t.shazam?.statut, t.audd?.statut].includes('cherche');
     const st = (f) => (f?.statut === 'trouve' ? 'trouve' : f?.statut === 'cherche' ? 'cherche' : '');
-    const styles = [...(reconnu?.genres || []), ...(reconnu?.styles || [])];
+    const morceau = radio ? infos?.morceau : reconnu;
+    const styles = radio
+      ? [...stylesRadio.genres, ...stylesRadio.styles]
+      : [...(reconnu?.genres || []), ...(reconnu?.styles || [])];
     const etats = {
       shazam: st(t.shazam),
       audd: st(t.audd),
-      discogs: styles.length ? 'trouve' : cherche ? 'cherche' : '',
+      discogs: radio ? stylesRadio.etat : styles.length ? 'trouve' : cherche ? 'cherche' : '',
     };
     for (const l of bloc.querySelectorAll('.lampe')) {
       const e = etats[l.dataset.lampe];
@@ -980,13 +1147,34 @@ function installerVisiteur(api) {
       else delete l.dataset.etat;
     }
     const vus = new Set();
-    const infos2 = [genre, ...styles].filter(
-      (x) => x && !vus.has(x.toLowerCase()) && vus.add(x.toLowerCase()),
-    );
+    const mots = [genre, ...styles].filter((x) => x && !vus.has(x.toLowerCase()) && vus.add(x.toLowerCase()));
+    const ligne = morceau ? ligneMorceau(morceau) : null;
+    const pt = $('style-titre');
+    pt.hidden = !ligne;
+    if (ligne && pt.textContent !== ligne) pt.textContent = ligne;
     const p = $('style-infos');
-    const texte = infos2.length ? infos2.join(' · ') : T.styleEcoute;
+    const texte = mots.length ? mots.join(' · ') : ligne ? '' : T.styleEcoute;
     if (p.textContent !== texte) p.textContent = texte;
-    p.classList.toggle('muet', !infos2.length);
+    p.hidden = !texte;
+    p.classList.toggle('muet', !mots.length);
+  }
+  const autoVhs = creerAuto();
+  function vhsTemps(e, r) {
+    if (!api.vhsAutomatique) return;
+    const mode = e?.mode || (e?.in_break ? 'break' : 'drop');
+    const depuis = Number.isFinite(r?.mesure) && Number.isFinite(r?.depuis) ? r.mesure - r.depuis : 0;
+    const geste = autoVhs.temps({
+      maintenant: Date.now(),
+      mode,
+      partie: r?.partie,
+      confiance: r?.confiance,
+      depuisMesures: depuis,
+    });
+    if (geste === 'allumer')
+      api.vhsAutomatique(true).then((ok) => {
+        if (!ok) autoVhs.couper();
+      });
+    else if (geste === 'eteindre') api.vhsAutomatique(false);
   }
   function majCoupes() {
     const s = document.querySelector('[data-section="coupes"]');
@@ -1015,6 +1203,7 @@ function installerVisiteur(api) {
     if (ici !== jetonInfos || source !== 'radio' || radioN !== n) return;
     infos = r;
     majEcoute();
+    chercherStylesRadio(r?.morceau);
     relanceInfos = setTimeout(lireInfos, RELANCE_MS);
   }
   function arreterInfos() {
