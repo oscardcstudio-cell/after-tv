@@ -71,7 +71,35 @@ const svg = (d, taille, cls) =>
   `<svg class="${cls}" viewBox="0 0 24 24" width="${taille}" height="${taille}" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const PLUS_MOINS = svg('<path d="M12 6v12M6 12h12"/>', 16, 'plus') + svg('<path d="M6 12h12"/>', 16, 'moins');
 const FLECHE = svg('<path d="M5 12h14M13 6l6 6-6 6"/>', 16, 'fleche');
-const RELAIS_STYLES = '/after-tv/titre-styles';
+const DISCOGS = 'https://api.discogs.com/database/search';
+const cacheDiscogs = new Map();
+async function stylesDiscogs(artiste, titre) {
+  const cle = `${artiste}|${titre}`;
+  if (cacheDiscogs.has(cle)) return cacheDiscogs.get(cle);
+  const q = new URLSearchParams({ type: 'release', artist: artiste, track: titre, per_page: '5' });
+  const ctrl = new AbortController(),
+    minuteur = setTimeout(() => ctrl.abort(), 4e3);
+  try {
+    const rep = await fetch(`${DISCOGS}?${q}`, { signal: ctrl.signal });
+    if (!rep.ok) return { styles: [], genres: [] };
+    const res = (await rep.json()).results || [];
+    const compte = (k) => {
+      const n = new Map();
+      for (const x of res) for (const v of new Set(x[k] || [])) n.set(v, (n.get(v) || 0) + 1);
+      return [...n]
+        .sort((a, b) => b[1] - a[1])
+        .map(([v]) => v)
+        .slice(0, 4);
+    };
+    const r = { styles: compte('style'), genres: compte('genre') };
+    cacheDiscogs.set(cle, r);
+    return r;
+  } catch {
+    return { styles: [], genres: [] };
+  } finally {
+    clearTimeout(minuteur);
+  }
+}
 const PARAMS = new URLSearchParams(location.search);
 const SUGGESTION_DELAI_MS = Number(globalThis.__suggestionDelaiMs) || 5e3;
 const SUGGESTION_VISIBLE_MS = Number(globalThis.__suggestionVisibleMs) || 8e3;
@@ -228,6 +256,15 @@ function installerVisiteur(api) {
     }
     return moteurPromesse;
   }
+  async function completerStyles(mo) {
+    if (!mo?.artiste || !mo?.titre || mo.styles?.length) return;
+    const r = await stylesDiscogs(mo.artiste, mo.titre);
+    if (reconnu !== mo || !(r.styles.length || r.genres.length)) return;
+    mo.styles = r.styles;
+    if (!mo.genres?.length) mo.genres = r.genres;
+    moteur?.morceau?.(mo);
+    majReconnaissance();
+  }
   function brancher(m) {
     titreAuto = creerTitre({
       extrait: (sec) => m.extrait?.(sec) || null,
@@ -237,6 +274,7 @@ function installerVisiteur(api) {
         moteur?.morceau?.(mo);
         majEcoute();
         majReconnaissance();
+        completerStyles(mo);
       },
       suivi: (e) => {
         etatTitre = e;
@@ -1132,14 +1170,7 @@ function installerVisiteur(api) {
     stylesRadio = { cle, etat: cle ? 'cherche' : '', styles: [], genres: [] };
     majReconnaissance();
     if (!cle) return;
-    let r = null;
-    try {
-      const q = new URLSearchParams({ artiste: m.artiste, titre: m.titre });
-      const rep = await fetch(`${RELAIS_STYLES}?${q}`);
-      r = rep.ok ? await rep.json() : null;
-    } catch {
-      r = null;
-    }
+    const r = await stylesDiscogs(m.artiste, m.titre);
     if (stylesRadio.cle !== cle) return;
     const styles = Array.isArray(r?.styles) ? r.styles : [],
       genres = Array.isArray(r?.genres) ? r.genres : [];

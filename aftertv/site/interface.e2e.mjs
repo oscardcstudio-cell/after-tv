@@ -158,11 +158,6 @@ const serveur = createServer(async (req, res) => {
   if (chemin === 'moteur.js') return envoie(TYPES['.js'], FAUX_MOTEUR);
   if (chemin === 'config.json')
     return envoie(TYPES['.json'], JSON.stringify({ manifest: 'data/manifest.json' }));
-  if (chemin === 'after-tv/titre-styles')
-    return envoie(
-      TYPES['.json'],
-      JSON.stringify({ styles: ['Electro', 'Synth-pop'], genres: ['Electronic'] }),
-    );
   if (chemin === 'ntsc.wasm')
     return envoie('application/wasm', await readFile(join(SITE, '..', '..', 'docs', 'glitch', 'ntsc.wasm')));
   if (chemin === 'vhs-reglages.json')
@@ -256,6 +251,14 @@ const STATUT_IGFM = {
   },
 };
 async function routerRadio(ctx, { statut = true, flux = true, compter = () => {} } = {}) {
+  await ctx.route('https://api.discogs.com/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ results: [{ style: ['Electro', 'Synth-pop'], genre: ['Electronic'] }] }),
+    }),
+  );
   await ctx.route('https://radio.intergalactic.fm/**', async (route) => {
     const u = route.request().url();
     if (u.includes('status-json')) {
