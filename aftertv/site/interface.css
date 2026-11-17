@@ -831,15 +831,28 @@ html.panneau-ouvert .flottant {
   grid-template-columns: repeat(3, 1fr);
   gap: var(--s2);
 }
-#panneau .grille-tap button,
-#panneau #tap-tap {
+#panneau .grille-tap button {
   height: 48px;
   justify-content: center;
   padding: 0;
   font-size: var(--t-body);
 }
 #panneau #tap-tap {
-  width: 100%;
+  width: auto;
+  height: 30px;
+  min-height: 0;
+  padding: 0 var(--s4);
+  justify-content: center;
+  font-size: var(--t-meta);
+  font-weight: 500;
+  letter-spacing: var(--track-label);
+}
+@media (pointer: coarse) {
+  #panneau #tap-tap {
+    height: var(--hit, 44px);
+    min-height: var(--hit, 44px);
+    padding: 0 var(--s5);
+  }
 }
 #panneau #tap-tap:active {
   background: var(--fill-press);

@@ -600,6 +600,36 @@
         align-items: center;
         text-decoration: none;
       }
+      #debug .dbg-bouton-image,
+      #debug .dbg-bouton-image[aria-pressed='true'] {
+        align-self: center;
+        min-height: 20px;
+        padding: 0 8px;
+        font:
+          500 10px/1 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        letter-spacing: 0.02em;
+        text-transform: none;
+        color: var(--discret);
+        background: transparent;
+        border-color: transparent;
+      }
+      #debug .dbg-bouton-image::before {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-right: 5px;
+        border-radius: 50%;
+        border: 1px solid var(--discret);
+        vertical-align: 0;
+      }
+      #debug .dbg-bouton-image[aria-pressed='true']::before {
+        background: var(--texte);
+        border-color: var(--texte);
+      }
       #debug h3 .etape {
         display: inline-grid;
         place-items: center;
@@ -1900,7 +1930,7 @@
         chaine: "Entendu → déduit → effet à l'écran → règle de Rien",
         expert: 'Expert',
         expertAide: 'Toutes les valeurs brutes, sans traduction',
-        image: 'Image auto',
+        image: 'image auto',
         imageAide:
           'Lumière, contraste, saturation et teinte réglés en direct (codex V93 à V96). Éteint : les loops telles quelles',
         doc: 'How it works',
