@@ -142,13 +142,23 @@ const capture = async (page, nom) => {
 async function nouvellePage(viewport = { width: 1280, height: 720 }) {
   const ctx = await navigateur.newContext({ viewport, permissions: ['clipboard-read', 'clipboard-write'] });
   await ctx.addInitScript(PARTAGE);
-  await ctx.route(/^https:\/\/(www\.youtube\.com|w\.soundcloud\.com)\//, (r) =>
+  await ctx.route(/^https:\/\/www\.youtube\.com\//, (r) =>
     r.fulfill({
       status: 200,
       contentType: 'text/html',
-      body: "<body style='margin:0;background:#222;color:#999;font:12px sans-serif;display:grid;place-items:center;height:100vh'>lecteur</body>",
+      body: `<body><script>
+    let etat = 1; const dire = (e, info) => parent.postMessage(JSON.stringify({ event: e, info }), "*");
+    addEventListener("message", (m) => { const d = JSON.parse(m.data);
+      if (d.event === "listening") dire("infoDelivery", { playerState: etat });
+      if (d.func === "playVideo") { etat = 1; dire("onStateChange", 1); }
+      if (d.func === "pauseVideo") { etat = 2; dire("onStateChange", 2); } });
+  <\/script></body>`,
     }),
   );
+  await ctx.route(/^https:\/\/(w\.soundcloud\.com|player-widget\.mixcloud\.com)\//, (r) =>
+    r.fulfill({ status: 200, contentType: 'text/html', body: '<body></body>' }),
+  );
+  await ctx.route(/^https:\/\/(widget\.mixcloud\.com|open\.spotify\.com)\//, (r) => r.abort());
   const page = await ctx.newPage();
   page.on('pageerror', (e) => erreurs.push(String(e)));
   await page.goto(PAGE);
@@ -205,7 +215,14 @@ try {
     await page.mouse.move(400, 300);
     await page.mouse.move(420, 320);
     await page.waitForTimeout(300);
-    verifie(await page.isVisible('#lecteur-lien'), 'lecture : le lecteur visible au mouvement');
+    verifie(
+      await page.$eval(
+        '#lecteur-lien',
+        (d) => getComputedStyle(d).opacity === '0' && getComputedStyle(d).pointerEvents === 'none',
+      ),
+      'lecture : le lecteur invisible, même au mouvement',
+    );
+    verifie(!(await page.$('#lecteur-lien button')), 'lecture : aucun bouton pour fermer le lecteur');
     await capture(page, 'lecture');
     await page.evaluate(() => window.__interface.ouvrirPanneau());
     await page.waitForTimeout(500);
@@ -218,6 +235,20 @@ try {
       await page.locator('#panneau .autres-sources').evaluate((d) => !d.open),
       'panneau : More sources reste replié',
     );
+    verifie(
+      (await page.isVisible('#lecteur-volet')) &&
+        (await page.textContent('#lecteur-volet-nom')) === 'YouTube',
+      'panneau : la ligne du lecteur, YouTube',
+    );
+    await page.waitForFunction(
+      () => document.querySelector('#lecteur-volet-bouton')?.getAttribute('aria-label') === 'Pause',
+    );
+    resultats.push('panneau : en lecture, le bouton dit Pause');
+    await page.click('#lecteur-volet-bouton');
+    await page.waitForFunction(
+      () => document.querySelector('#lecteur-volet-bouton')?.getAttribute('aria-label') === 'Play',
+    );
+    resultats.push('panneau : Pause met en pause, le bouton dit Play');
     await capture(page, 'panneau');
     await page.evaluate(() => {
       const dt = new DataTransfer();
@@ -247,13 +278,13 @@ try {
     await page.evaluate(() => {
       window.__refus = true;
     });
-    await presse(page, 'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC');
+    await presse(page, 'https://www.mixcloud.com/dj/set-du-samedi/');
     await page.click('#entree-lien [data-coller]');
     await page.waitForFunction(() => window.__visiteur.erreur());
     const e = await etat(page);
     verifie(
-      e.cadre === 'https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC?theme=0',
-      `refus : le lecteur Spotify reste (${e.cadre})`,
+      e.cadre?.startsWith('https://player-widget.mixcloud.com/widget/iframe/?feed=%2Fdj%2Fset-du-samedi%2F'),
+      `refus : le lecteur Mixcloud reste (${e.cadre})`,
     );
     verifie(
       e.erreur.startsWith('The music plays, but the film cannot hear it'),

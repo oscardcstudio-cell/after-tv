@@ -1262,6 +1262,36 @@ html.interface #avance.fin time {
 #suggestion-radio .suggestion-titre {
   font-size: var(--t-body);
 }
+#suggestion-radio .ordi-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  width: 100%;
+  min-height: var(--hit);
+  padding: 0 var(--s4);
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: var(--t-body);
+  cursor: pointer;
+}
+#suggestion-radio .ordi-suggestion[hidden],
+#suggestion-radio .ou-radio[hidden] {
+  display: none;
+}
+#suggestion-radio .ordi-suggestion .meta,
+#suggestion-radio .ou-radio {
+  color: var(--ink-muted);
+}
+@media (hover: hover) and (pointer: fine) {
+  #suggestion-radio .ordi-suggestion:hover {
+    background: var(--fill-hover);
+    border-color: var(--ink);
+  }
+}
 #suggestion-radio .chaine {
   flex-direction: row;
   width: auto;
@@ -1622,34 +1652,21 @@ html.lecture #suggestion-radio p {
   margin: var(--s1) 0;
 }
 #lecteur-lien {
-  top: max(var(--s4), env(safe-area-inset-top));
-  left: max(var(--s4), env(safe-area-inset-left));
-  width: min(320px, calc(100vw - 2 * var(--s4) - 2 * var(--hit) - var(--s4)));
-  background: var(--chip-bg);
-  border-radius: var(--radius);
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 320px;
+  height: 180px;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
   overflow: hidden;
-  backdrop-filter: var(--chip-filter);
-  -webkit-backdrop-filter: var(--chip-filter);
 }
 #lecteur-lien iframe {
   display: block;
   width: 100%;
+  height: 100%;
   border: 0;
-}
-#lecteur-lien .fermer-lecteur {
-  position: absolute;
-  top: var(--s1);
-  right: var(--s1);
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius);
-  background: rgba(0, 0, 0, 0.72);
-  color: var(--ink);
-  cursor: pointer;
 }
 @media (prefers-reduced-motion: reduce) {
   .coller[aria-busy='true']::after {
@@ -1681,4 +1698,47 @@ html.lecture #suggestion-radio p {
   #entree-lien {
     display: none !important;
   }
+}
+.lecteur-volet[hidden] {
+  display: none;
+}
+.lecteur-volet {
+  display: grid;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+.lecteur-ligne {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: var(--hit);
+  padding-left: var(--s3);
+}
+.lecteur-nom {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--t-meta);
+  color: var(--ink-muted);
+}
+#panneau .lecteur-bouton {
+  width: var(--hit);
+  height: var(--hit);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--ink);
+  color: #000;
+  border: 0;
+}
+#panneau .lecteur-bouton[hidden] {
+  display: none;
+}
+.lecteur-cadre:empty {
+  display: none;
+}
+.lecteur-cadre iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius);
 }

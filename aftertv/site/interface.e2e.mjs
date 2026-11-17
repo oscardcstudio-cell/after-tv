@@ -1769,6 +1769,8 @@ try {
       return {
         titre: e.querySelector('.suggestion-titre').textContent,
         n: e.querySelectorAll('.chaine img').length,
+        ordi: !e.querySelector('#suggestion-ordi').hidden && e.querySelector('#suggestion-ordi').textContent,
+        peut: !!navigator.userAgentData && !!navigator.mediaDevices?.getDisplayMedia,
         filtres: [...e.querySelectorAll('img')].map((i) => getComputedStyle(i).filter),
         haut: r.top,
         bas: r.bottom,
@@ -1780,12 +1782,14 @@ try {
       };
     });
     verifie(
-      s.titre === 'No sound is coming in. Listen with Intergalactic FM.' &&
+      (s.peut
+        ? s.titre === 'No sound is coming in.' && s.ordi === 'Computer soundBest'
+        : s.titre === 'No sound is coming in. Listen with Intergalactic FM.' && s.ordi === false) &&
         s.n === 3 &&
         s.filtres.every((f) => f === 'grayscale(1)') &&
         s.credit === 'https://www.intergalactic.fm/' &&
         s.fermer === 'Dismiss the radio suggestion',
-      `proposition : texte, trois logos en noir et blanc, crédit, fermer (${JSON.stringify(s)})`,
+      `proposition : texte, son de l'ordinateur (si on sait le capter), trois logos en noir et blanc, crédit, fermer (${JSON.stringify(s)})`,
     );
     verifie(
       s.haut > 900 * 0.6 && s.bas < 900 && s.gauche > 300 && s.droite < 1140,

@@ -59,7 +59,7 @@ def test_la_page_publiee(tmp_path):
     D.construit_page(str(tmp_path), etat, {'version': 1, 'loops': [{'id': 'x'}]})
     icones = sorted(os.listdir(os.path.join(D.SITE, 'icones')))
     assert {'og.png', 'favicon.ico', 'apple-touch-icon.png', 'site.webmanifest'} <= set(icones)
-    assert sorted(os.listdir(tmp_path)) == sorted(['config.json', 'index.html', 'interface.js', 'interface.css', 'manifest.json', 'miroir.js', 'montage.js', 'moteur.js', 'oreille.html', 'oreille.js', 'reglages.js', 'paires.json', 'regles_montage.json', 'py', 'visiteur.js', 'radio.js', 'tags-en.js', 'audience.js', 'titre.js', 'adresses.js', 'image.js', 'radios', 'version.txt', 'vhs.js', 'ntsc.wasm', 'vhs-reglages.json', 'liens.js', 'services', 'how-it-works.html', 'how-it-works.js', 'how-it-works.css', 'demos'] + icones)
+    assert sorted(os.listdir(tmp_path)) == sorted(['config.json', 'index.html', 'interface.js', 'interface.css', 'manifest.json', 'miroir.js', 'montage.js', 'moteur.js', 'oreille.html', 'oreille.js', 'reglages.js', 'paires.json', 'regles_montage.json', 'py', 'visiteur.js', 'radio.js', 'tags-en.js', 'audience.js', 'titre.js', 'adresses.js', 'image.js', 'radios', 'version.txt', 'vhs.js', 'ntsc.wasm', 'vhs-reglages.json', 'liens.js', 'lecteur.js', 'services', 'how-it-works.html', 'how-it-works.js', 'how-it-works.css', 'demos'] + icones)
     assert sorted(os.listdir(tmp_path / 'radios')) == ['cbs.png', 'disco-fetish.png', 'tdm.png']
     for f in ('cbs.png', 'disco-fetish.png', 'tdm.png'):
         assert (tmp_path / 'radios' / f).read_bytes() == open(os.path.join(D.SITE, 'radios', f), 'rb').read()

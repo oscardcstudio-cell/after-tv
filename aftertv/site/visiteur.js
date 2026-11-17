@@ -2,6 +2,7 @@ import { lireReglages, ecrireReglages, coupesRapidesEffectives } from './reglage
 import { RADIOS, infosRadio, flux, nomRadio, SITE, ligneMorceau } from './radio.js';
 import { demarrerAudience } from './audience.js';
 import { lecteurDuLien, SERVICES } from './liens.js';
+import { creerLecteur } from './lecteur.js';
 import { creerTitre } from './titre.js';
 import { creerAuto } from './vhs.js';
 const T = {
@@ -11,6 +12,8 @@ const T = {
   radio: 'Listen with Intergalactic FM',
   creditRadio: 'The radio plays courtesy of ',
   suggestion: 'No sound is coming in. Listen with Intergalactic FM.',
+  suggestionCourte: 'No sound is coming in.',
+  ouRadio: 'or Intergalactic FM',
   suggestionFermer: 'Dismiss the radio suggestion',
   micro: 'Use the microphone (less precise)',
   aidePartage: 'In the share dialog, tick "Share system audio" (or "Share tab audio" when you pick a tab).',
@@ -57,8 +60,11 @@ const T = {
   lienVide: 'The clipboard is empty. Copy a link first.',
   lienInconnu: 'This link is not from YouTube, SoundCloud, Spotify, Mixcloud or Apple Music.',
   lienBloque: 'The browser would not read the clipboard. Press Ctrl+V (⌘V on a Mac) instead.',
-  fermerLecteur: 'Close the player',
   ongletRefuse: 'The music plays, but the film cannot hear it. Share this tab so the film can follow.',
+  lecture: 'Play',
+  pauseLecteur: 'Pause',
+  appuyerPlay: 'Press Play in the player.',
+  f11: 'While this tab is shared, fullscreen stays inside the tab. Press F11 to fill the screen.',
   pasDeSonOnglet: 'The tab shared no sound. Tick "Share tab audio", then try again.',
 };
 const svg = (d, taille, cls) =>
@@ -607,34 +613,70 @@ function installerVisiteur(api) {
   }
   function montrerLecteur(l) {
     fermerLecteur();
-    const cadre = el('iframe', {
-      src: l.src,
-      title: l.nom,
-      height: l.hauteur,
-      loading: 'eager',
-      allow: 'autoplay; encrypted-media; clipboard-write; picture-in-picture; fullscreen',
-      referrerpolicy: 'strict-origin-when-cross-origin',
+    const couche = el('div', { id: 'lecteur-lien', 'aria-hidden': 'true', 'data-service': l.service });
+    document.body.append(couche);
+    lecteur = creerLecteur(l, {
+      couche,
+      conteneurVisible: $('lecteur-volet-cadre'),
+      quand: () => majLecteur(),
     });
-    lecteur = el(
-      'div',
-      { id: 'lecteur-lien', class: 'flottant', 'data-service': l.service },
-      cadre,
-      el('button', {
-        class: 'fermer-lecteur',
-        type: 'button',
-        'aria-label': T.fermerLecteur,
-        title: T.fermerLecteur,
-        onclick: () => choisir('off'),
-        html: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-      }),
-    );
-    document.body.append(lecteur);
+    majLecteur();
   }
   function fermerLecteur() {
     if (!lecteur) return;
-    lecteur.remove();
+    lecteur.detruire();
+    $('lecteur-lien')?.remove();
     lecteur = null;
+    majLecteur();
   }
+  const ICONE_LECTURE =
+    '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M7 5v14l12-7z"/></svg>';
+  const ICONE_PAUSE =
+    '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+  function ligneLecteur() {
+    return el(
+      'div',
+      { class: 'lecteur-volet', id: 'lecteur-volet', hidden: true },
+      el(
+        'div',
+        { class: 'lecteur-ligne' },
+        el('span', { class: 'service', id: 'lecteur-volet-icone', 'aria-hidden': 'true' }),
+        el('span', { class: 'lecteur-nom', id: 'lecteur-volet-nom' }),
+        el('button', {
+          class: 'lecteur-bouton',
+          id: 'lecteur-volet-bouton',
+          type: 'button',
+          onclick: () => lecteur?.basculer(),
+        }),
+      ),
+      el('div', { class: 'lecteur-cadre', id: 'lecteur-volet-cadre' }),
+    );
+  }
+  function majLecteur() {
+    const v = $('lecteur-volet');
+    if (!v) return;
+    v.hidden = !lecteur;
+    if (!lecteur) {
+      $('lecteur-volet-cadre').replaceChildren();
+      return;
+    }
+    $('lecteur-volet-icone').className = `service service-${lecteur.service}`;
+    const b = $('lecteur-volet-bouton');
+    const joue = lecteur.etat === 'lecture';
+    b.hidden = !lecteur.pilotable;
+    b.innerHTML = joue ? ICONE_PAUSE : ICONE_LECTURE;
+    b.setAttribute('aria-label', joue ? T.pauseLecteur : T.lecture);
+    b.title = joue ? T.pauseLecteur : T.lecture;
+    $('lecteur-volet-nom').textContent = lecteur.pilotable
+      ? lecteur.nom
+      : `${lecteur.nom} · ${T.appuyerPlay}`;
+  }
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement || source !== 'tab') return;
+    setTimeout(() => {
+      if (document.fullscreenElement && innerHeight < screen.height - 40) api.avis?.(T.f11);
+    }, 400);
+  });
   addEventListener('paste', (ev) => {
     if (ev.target?.closest?.('input, textarea, [contenteditable="true"]')) return;
     const texte = ev.clipboardData?.getData('text') || '';
@@ -961,7 +1003,7 @@ function installerVisiteur(api) {
             el('span', { html: FLECHE }),
           ),
         );
-        box.append(sys2, boutonLien());
+        box.append(sys2, boutonLien(), ligneLecteur());
       }
       for (const r of RADIOS) {
         autres.push(
@@ -1271,7 +1313,23 @@ function installerVisiteur(api) {
   const suggestion = el(
     'div',
     { id: 'suggestion-radio', role: 'region', 'aria-label': T.radio, hidden: true },
-    el('p', { class: 'suggestion-titre' }, T.suggestion),
+    el('p', { class: 'suggestion-titre', id: 'suggestion-titre' }, T.suggestion),
+    el(
+      'button',
+      {
+        class: 'ordi-suggestion',
+        type: 'button',
+        id: 'suggestion-ordi',
+        hidden: true,
+        onclick: () => {
+          visibleJusqua = 0;
+          choisir('system');
+        },
+      },
+      el('span', {}, T.sOrdinateur),
+      el('span', { class: 'meta' }, T.sMeilleur),
+    ),
+    el('p', { class: 'meta ou-radio', id: 'suggestion-ou', hidden: true }, T.ouRadio),
     el('div', { class: 'chaines', id: 'suggestion-chaines' }),
     creditRadio(),
     el('button', {
@@ -1296,6 +1354,10 @@ function installerVisiteur(api) {
   });
   document.body.append(suggestion);
   function remplirSuggestion() {
+    const ordi = peutCapter && source !== 'system' && source !== 'loopback';
+    $('suggestion-ordi').hidden = !ordi;
+    $('suggestion-ou').hidden = !ordi;
+    $('suggestion-titre').textContent = ordi ? T.suggestionCourte : T.suggestion;
     const box = $('suggestion-chaines');
     const cle = String(radioN);
     if (box.dataset.cle === cle) return;
