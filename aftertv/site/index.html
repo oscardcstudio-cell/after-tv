@@ -2631,9 +2631,11 @@
         const c = Object.values(e.couches || {}).find((x) => x && x.col === col);
         return c && c.nom ? c.nom : lib('colonne', { n: col });
       }
+      const blocImage = () =>
+        `<section class="dbg-image"><h3 class="dbg-h3-image">Image<button type="button" class="dbg-bouton-image" aria-pressed="${image.actif}" title="${esc(LIBELLES.imageAide)}">${esc(LIBELLES.image)}</button></h3><div class="dbg-faders"></div></section>`;
       function blocDeduit(e, cx) {
         const { s, f } = cx;
-        const titre = `<h3 class="dbg-h3-image"><span class="etape">2</span>${esc(LIBELLES.etapeDeduit)}<button type="button" class="dbg-bouton-image" aria-pressed="${image.actif}" title="${esc(LIBELLES.imageAide)}">${esc(LIBELLES.image)}</button></h3><div class="dbg-faders"></div>`;
+        const titre = `<h3><span class="etape">2</span>${esc(LIBELLES.etapeDeduit)}</h3>`;
         if (!s.ecoute)
           return `<section>${titre}<div class="vide">${esc(LIBELLES.ecouteAbsente)}</div></section>`;
         const g = cx.g;
@@ -3273,6 +3275,7 @@
           blocDeduit(e, cx) +
           blocRegles(e, cx) +
           blocEssentiel(e, cx) +
+          blocImage() +
           (v.expert ? `<h3 class="dbg-zone">${esc(LIBELLES.expertTitre)}</h3>${sectionsExpert(e)}` : '');
         if (html !== dernierHtml) {
           dernierHtml = html;
