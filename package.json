@@ -1,0 +1,12 @@
+{
+  "name": "after-tv",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A web page that cuts video loops live, on the music it hears.",
+  "license": "MIT",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test aftertv/site/*.test.mjs scripts/aftertv/*.test.mjs && python -m pytest scripts"
+  }
+}

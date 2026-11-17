@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>After TV</title>
+    <meta name="description" content="VJ Rien Live 24/7" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="manifest" href="site.webmanifest" />
+    <link rel="canonical" href="https://odcstudio.fr/after-tv/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="After TV" />
+    <meta property="og:title" content="After TV" />
+    <meta property="og:description" content="VJ Rien Live 24/7" />
+    <meta property="og:url" content="https://odcstudio.fr/after-tv/" />
+    <meta property="og:image" content="https://odcstudio.fr/after-tv/og.png?v=2" />
+    <meta property="og:image:width" content="2400" />
+    <meta property="og:image:height" content="1260" />
+    <meta property="og:image:alt" content="AFTER TV in white on a black screen" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="After TV" />
+    <meta name="twitter:description" content="VJ Rien Live 24/7" />
+    <meta name="twitter:image" content="https://odcstudio.fr/after-tv/og.png?v=2" />
+
+    <script type="importmap">
+      {
+        "imports": {
+          "@mediapipe/tasks-audio": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.3/+esm"
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="accueil.css" />
+  </head>
+  <body>
+    <iframe id="ecran" title="After TV" allow="autoplay; fullscreen" tabindex="-1"></iframe>
+
+    <div id="entree">
+      <div class="colonne">
+        <p id="tourner">
+          <svg
+            class="telephone"
+            viewBox="0 0 24 24"
+            role="img"
+            aria-label="A phone turning from upright to sideways"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <g>
+              <rect x="7.5" y="3" width="9" height="18" rx="1.5" />
+              <path d="M11 18h2" />
+            </g></svg
+          ><span>Turn your phone sideways to watch the film.</span>
+        </p>
+        <div class="bloc-titre">
+          <h1 id="titre">AFTER TV</h1>
+          <div id="charge" role="status" hidden>
+            <div class="ligne-charge" aria-hidden="true"><i></i></div>
+            <p class="etiquette">Warming up</p>
+            <p id="charge-ligne" hidden>The edit is loading, it takes a few seconds.</p>
+          </div>
+        </div>
+        <p id="invitation"></p>
+        <div id="actions">
+          <button id="principal" class="primaire" type="button"></button>
+          <div id="secondaires"></div>
+          <p id="aide"></p>
+        </div>
+      </div>
+      <p id="credit">
+        a project by
+        <a href="https://www.instagram.com/vj_rien_/" target="_blank" rel="noopener"
+          ><svg
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="5" />
+            <circle cx="12" cy="12" r="4" />
+            <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></svg
+          >VJ Rien @vj_rien_</a
+        >
+        and
+        <a href="https://www.instagram.com/enjoy.dot/" target="_blank" rel="noopener"
+          ><svg
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="5" />
+            <circle cx="12" cy="12" r="4" />
+            <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></svg
+          >@enjoy.dot</a
+        >
+      </p>
+    </div>
+
+    <button
+      id="bouton-panneau"
+      class="flottant"
+      type="button"
+      aria-label="Open the After TV panel"
+      aria-controls="panneau"
+      aria-expanded="false"
+      hidden
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width="20"
+        height="20"
+        aria-hidden="true"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M4 8h9M17 8h3M4 16h3M11 16h9" />
+        <path d="M17 8a2 2 0 1 1-4 0a2 2 0 1 1 4 0M11 16a2 2 0 1 1-4 0a2 2 0 1 1 4 0" />
+      </svg>
+    </button>
+
+    <aside id="panneau" role="dialog" aria-modal="false" aria-label="After TV panel">
+      <div class="tete-panneau">
+        <span class="etiquette">AFTER TV</span>
+        <button id="fermer-panneau" class="fermer" type="button" aria-label="Close">
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+      <div id="panneau-contenu"></div>
+    </aside>
+
+    <script type="module" src="accueil.js"></script>
+  </body>
+</html>

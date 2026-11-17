@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+.env
+.wrangler/
+aftertv/deploiement.json
+scripts/beatgrid/settings.json
+scripts/aftertv/audd_token.txt
+tags.json

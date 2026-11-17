@@ -1,0 +1,13 @@
+[
+  {"cle": "tech-house", "fichier": "demos/tech-house.json", "nom": "Tech house", "lien": "https://youtu.be/4K260LAY1YE"},
+  {"cle": "techno", "fichier": "demos/techno.json", "nom": "Techno", "lien": "https://youtu.be/cyxxzCEKL_o"},
+  {"cle": "rock", "fichier": "demos/rock.json", "nom": "Rock", "lien": "https://www.youtube.com/watch?v=7hXmPxVNVlM"},
+  {"cle": "progressive-house", "fichier": "demos/progressive-house.json", "nom": "Progressive house", "lien": "https://www.youtube.com/watch?v=7WRuSuOFSzA"},
+  {"cle": "house", "fichier": "demos/house.json", "nom": "House", "lien": "https://www.youtube.com/watch?v=DrxPFBEr5Bo"},
+  {"cle": "electro", "fichier": "demos/electro.json", "nom": "Electro", "lien": "https://www.youtube.com/watch?v=jSsj3fTHtps"},
+  {"cle": "disco", "fichier": "demos/disco.json", "nom": "Disco", "lien": "https://www.youtube.com/watch?v=yEbaeLv-aOo"},
+  {"cle": "hip-hop", "fichier": "demos/hip-hop.json", "nom": "Hip hop", "lien": "https://www.youtube.com/watch?v=_CL6n0FJZpk"},
+  {"cle": "trance", "fichier": "demos/trance.json", "nom": "Trance", "lien": "https://www.youtube.com/watch?v=uTA4C5QwZEg"},
+  {"cle": "drum-and-bass", "fichier": "demos/drum-and-bass.json", "nom": "Drum and bass", "lien": "https://www.youtube.com/watch?v=cwI0gbGEyuI"},
+  {"cle": "ambient", "fichier": "demos/ambient.json", "nom": "Ambient", "lien": "https://www.youtube.com/watch?v=uXpKC8TIAxE"}
+]

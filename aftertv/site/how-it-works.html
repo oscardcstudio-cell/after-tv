@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>How After TV works</title>
+    <meta
+      name="description"
+      content="How After TV listens to your music and cuts a library of film to it, live, step by step."
+    />
+    <meta name="theme-color" content="#000000" />
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
+
+    <link rel="stylesheet" href="interface.css" />
+    <link rel="stylesheet" href="how-it-works.css" />
+  </head>
+  <body>
+    <header class="tete">
+      <a class="marque" href="./">After TV</a>
+      <span class="doc-nom">How it works</span>
+      <div class="statut" role="status" aria-live="polite">
+        <span class="voyant" aria-hidden="true"></span><span id="statut-recit">Starting</span>
+      </div>
+      <div class="choix-demo" role="group" aria-label="Recorded session" hidden></div>
+      <div class="pas-a-pas">
+        <button type="button" id="prec" class="fleche" aria-label="Previous step">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+        </button>
+        <span id="compteur" aria-live="off">00 / 12</span>
+        <button type="button" id="suiv" class="fleche" aria-label="Next step">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <nav class="rail" aria-label="Steps">
+      <ol>
+        <li data-station="">
+          <a href="#s0" data-n="0"><span class="num">00</span><span class="nom">Overview</span></a>
+        </li>
+        <li data-station="Sound">
+          <a href="#s1" data-n="1"><span class="num">01</span><span class="nom">Sound in</span></a>
+        </li>
+        <li data-station="Ear">
+          <a href="#s2" data-n="2"><span class="num">02</span><span class="nom">The ear</span></a>
+        </li>
+        <li data-station="Ear">
+          <a href="#s3" data-n="3"><span class="num">03</span><span class="nom">Groove</span></a>
+        </li>
+        <li data-station="Brain">
+          <a href="#s4" data-n="4"><span class="num">04</span><span class="nom">Track map</span></a>
+        </li>
+        <li data-station="Brain">
+          <a href="#s5" data-n="5"><span class="num">05</span><span class="nom">Modes</span></a>
+        </li>
+        <li data-station="Brain">
+          <a href="#s6" data-n="6"><span class="num">06</span><span class="nom">Texture</span></a>
+        </li>
+        <li data-station="Edit">
+          <a href="#s7" data-n="7"><span class="num">07</span><span class="nom">Library</span></a>
+        </li>
+        <li data-station="Edit">
+          <a href="#s8" data-n="8"><span class="num">08</span><span class="nom">Next loop</span></a>
+        </li>
+        <li data-station="Edit">
+          <a href="#s9" data-n="9"><span class="num">09</span><span class="nom">Cuts</span></a>
+        </li>
+        <li data-station="Screen">
+          <a href="#s10" data-n="10"><span class="num">10</span><span class="nom">Screen</span></a>
+        </li>
+        <li data-station="Rules">
+          <a href="#s11" data-n="11"><span class="num">11</span><span class="nom">Rules</span></a>
+        </li>
+        <li data-station="Rules">
+          <a href="#s12" data-n="12"><span class="num">12</span><span class="nom">Origin</span></a>
+        </li>
+      </ol>
+      <div class="pouls" aria-hidden="true"><i></i></div>
+    </nav>
+
+    <div class="page">
+      <aside class="moniteur" aria-label="The film">
+        <div class="cadre-film">
+          <iframe
+            id="film"
+            title="After TV, fed by the same data as this page"
+            allow="autoplay; fullscreen"
+          ></iframe>
+        </div>
+        <p class="legende">The film, driven beat by beat by the data on this page.</p>
+      </aside>
+
+      <main>
+        <section id="s0" class="etape couverture" data-n="0">
+          <div class="recit">
+            <div class="titre-couv">
+              <p class="numero" aria-hidden="true">00</p>
+              <h1>How After TV works</h1>
+              <p class="chapeau">
+                You play a track. Your browser listens and cuts Rien's film library to it, beat by beat.
+              </p>
+            </div>
+            <div class="corps-couv">
+              <p>
+                No server does the work, and nobody stands at the decks. The ear is a JavaScript library. The
+                brain and the edit are the Python code Rien plays its own live sets with, running inside this
+                page: one program for both (V48).
+              </p>
+              <p>
+                Each dot crossing the chain is one beat of the track playing now. Use the arrow keys to move
+                along it.
+              </p>
+            </div>
+
+            <div class="rien-couv">
+              <div>
+                <h2 class="rien-titre">VJing</h2>
+                <p>
+                  VJing means projecting a silent film whose soundtrack is the DJ's music. The VJ sorts
+                  hundreds of pieces of a puzzle by theme, then movement, then rhythm, and live, guesses what
+                  the DJ plays next.
+                </p>
+              </div>
+              <div>
+                <h2 class="rien-titre">Cinema, not graphics</h2>
+                <p>
+                  Rien does not loop artificial graphics that always look the same. Rien plays cinema and the
+                  living, from abstract to amateur to 3D, sampled the way electronic music samples records.
+                </p>
+              </div>
+              <div>
+                <h2 class="rien-titre">The library</h2>
+                <p>
+                  <span class="rien-chiffre">1,137</span> videos, about 12 hours, cut shot by shot and put
+                  online in 12 volumes, so the next generations don't have to squeeze every film themselves.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="vue" id="v0" aria-live="off"></div>
+        </section>
+
+        <section id="s1" class="etape" data-n="1">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">01</p>
+            <p class="station">Sound</p>
+            <h2>The sound comes in</h2>
+            <p>
+              Three ways in. On desktop Chrome or Edge, you share a screen with its audio: After TV throws
+              away the picture and keeps the sound. Anywhere else, it plays Intergalactic FM (an internet
+              radio with three channels) or listens through the microphone, which hears the room and is less
+              precise.
+            </p>
+            <p>
+              Sound under -60 dB in the mids and highs counts as silence. After 4 seconds of it, the screen
+              goes black with AFTER TV in the middle. The film returns with the sound (V74).
+            </p>
+          </div>
+          <div class="vue" id="v1"></div>
+        </section>
+
+        <section id="s2" class="etape" data-n="2">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">02</p>
+            <p class="station">Ear</p>
+            <h2>The ear</h2>
+            <p>
+              The ear is
+              <a href="https://github.com/hssnadr/live-audio-analyzer" target="_blank" rel="noopener"
+                >live-audio-analyzer</a
+              >, an open-source library by hssnadr, loaded from its repository at a fixed version. Every 256
+              samples, it runs a 1024-point FFT on the sound.
+            </p>
+            <p>
+              From the attacks it finds the tempo and the first beat of each bar. A separate detector catches
+              the kick drum. Every 5 seconds, YAMNet, Google's sound classifier, names the genre.
+            </p>
+            <p>
+              The genre steers the edit only when the visitor picks Auto. With a style chosen (House by
+              default), the genre is shown here and does nothing else.
+            </p>
+          </div>
+          <div class="vue" id="v2"></div>
+        </section>
+
+        <section id="s3" class="etape" data-n="3">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">03</p>
+            <p class="station">Ear</p>
+            <h2>The groove of the bar</h2>
+            <p>
+              Every kick, snare and hi-hat hit lands on one of the bar's 16 steps. Read together, the three
+              lines get a name: four-on-the-floor, broken beat, light kick or no kick.
+            </p>
+            <p>
+              When the name changes, the edit swaps its dominant loop at the end of that bar (V71), at most
+              once every 8 bars.
+            </p>
+            <p>
+              The ear also catches a sudden silence, the stop before a drop. When After TV follows Rien's
+              dashboard, it cuts to black, and the first kick brings the image back.
+            </p>
+          </div>
+          <div class="vue" id="v3"></div>
+        </section>
+
+        <section id="s4" class="etape" data-n="4">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">04</p>
+            <p class="station">Brain</p>
+            <h2>Where we are in the track</h2>
+            <p>
+              The brain counts bars, groups them into 8-bar phrases, and names the part it hears: intro,
+              verse, build-up, chorus, break or outro, with its confidence.
+            </p>
+            <p>
+              It also notices when a part or a riff comes back, and can announce a drop a few bars ahead. The
+              edit uses all three. A returning part or riff brings back the loops it had the first time. An
+              announced drop gets its loops ready one bar early.
+            </p>
+            <p>
+              The part also sets how many loops share the screen, and how long the loops around the dominant
+              one stay.
+            </p>
+          </div>
+          <div class="vue" id="v4"></div>
+        </section>
+
+        <section id="s5" class="etape" data-n="5">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">05</p>
+            <p class="station">Brain</p>
+            <h2>Four modes</h2>
+            <p>Beneath the parts, the edit plays one of four modes: the four buttons on Rien's controller.</p>
+            <p>
+              Every mode change, and every tool the autopilot touches, goes into a journal with its reason.
+              The latest entries show here.
+            </p>
+          </div>
+          <div class="vue" id="v5"></div>
+        </section>
+
+        <section id="s6" class="etape" data-n="6">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">06</p>
+            <p class="station">Brain</p>
+            <h2>The texture of the sound</h2>
+            <p>
+              Beyond rhythm, the ear describes the material of the sound: bright or dull, smooth or rough, dry
+              or reverberant, squashed or airy, with or without a voice or an instrument.
+            </p>
+            <p>
+              Each word points to visual tags. A dull sound asks for low-key images, a rough one for hard
+              lines and square shapes. These tags break ties: among loops that fit the edit equally well, the
+              ones that match the sound win.
+            </p>
+            <p>
+              The ear measures more than the edit uses so far. What is measured but not wired is listed at the
+              bottom.
+            </p>
+          </div>
+          <div class="vue" id="v6"></div>
+        </section>
+
+        <section id="s7" class="etape" data-n="7">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">07</p>
+            <p class="station">Edit</p>
+            <h2>The library</h2>
+            <p>
+              Every loop comes from Rien's Resolume composition: twelve volumes of film, cut shot by shot.
+            </p>
+            <p>
+              The composition is sorted in chapters along its timeline, so neighboring columns tend to belong
+              together. Each loop carries a card of tags: speed, the modes it suits, house or techno, and a
+              visual block (tone, color, lines, movement, shape, space, framing, subject).
+            </p>
+          </div>
+          <div class="vue" id="v7"></div>
+        </section>
+
+        <section id="s8" class="etape" data-n="8">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">08</p>
+            <p class="station">Edit</p>
+            <h2>Choosing the next loop</h2>
+            <p>
+              When a loop leaves, its replacement is drawn next to the loop that stays. First, the pool: loops
+              that fit the mood, are not on screen, and have not played recently (V21).
+            </p>
+            <p id="p8-lien">
+              Then the link. A candidate shares at least one tag with the loop that stays (V46), and the draw
+              follows Rien's own edits.
+            </p>
+            <p id="p8-paires">Now and then, a pair that Rien cut by hand comes back.</p>
+            <p class="note">
+              The candidates shown here come from running the real draw (<code>montage.js</code>, the browser
+              copy of the one in <code>live.py</code>) on the real catalog, starting from the loop on screen
+              now.
+            </p>
+          </div>
+          <div class="vue" id="v8"></div>
+        </section>
+
+        <section id="s9" class="etape" data-n="9">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">09</p>
+            <p class="station">Edit</p>
+            <h2>Cutting on the beat</h2>
+            <p>
+              Cuts land on the beat. The edit follows the kick. When the hi-hat is clear (1.5 hits per beat or
+              more), it follows that instead, for 2 bars at most, then goes back to the kick for at least 12
+              (V59).
+            </p>
+            <p>
+              Around the dominant loop, one loop changes every 2 to 4 bars depending on the part (V41), and
+              never more than one at a time: the pair x y becomes x z (V42). The edit counts in bars, never in
+              seconds, so it breathes with the tempo; a mask laid on top holds 16 bars (V90). Inside a loop,
+              cue points let the edit jump to another moment of the same shot.
+            </p>
+          </div>
+          <div class="vue" id="v9"></div>
+        </section>
+
+        <section id="s10" class="etape" data-n="10">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">10</p>
+            <p class="station">Screen</p>
+            <h2>The screen</h2>
+            <p>
+              Resolume, rebuilt in the page: up to three layers, stacked as in Arena. Each layer holds two
+              videos. The next loop loads in the hidden one and comes to the front only when a frame is ready
+              at the chosen cue, so the screen never flashes black.
+            </p>
+            <p>
+              Alpha layers swap on the beat. 50 Add lays a layer's light over what is under it. In CSS, that
+              is <code>mix-blend-mode: plus-lighter</code>.
+            </p>
+            <p>
+              The videos are H.264 with a keyframe every 12 frames, so jumping to a cue point is instant. They
+              are served from Cloudflare R2 for about $0 to $1 a month.
+            </p>
+          </div>
+          <div class="vue" id="v10"></div>
+        </section>
+
+        <section id="s11" class="etape" data-n="11">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">11</p>
+            <p class="station">Rules</p>
+            <h2>Rien's rules</h2>
+            <p>
+              Every rule on this page came from Rien watching the edit and correcting it. Each has a number in
+              Rien's codex.
+            </p>
+            <p>
+              Some rules only act once every few minutes. So here are five of them, played out on a made-up
+              track at 120 BPM. When one acts in the track playing now, its tab gets a dot.
+            </p>
+          </div>
+          <div class="vue" id="v11"></div>
+        </section>
+
+        <section id="s12" class="etape" data-n="12">
+          <div class="recit">
+            <p class="numero" aria-hidden="true">12</p>
+            <p class="station">Rules</p>
+            <h2>Where it comes from</h2>
+            <p>
+              People kept asking how to get these images. After TV is the answer: a program that edits the
+              archive live, on any music, in a website, for any TV, any projector, a bar or a beginner DJ.
+            </p>
+            <p>
+              The 2024 dossier imagined an AI trained by watching Rien play for hours. We wrote rules instead,
+              each one after Rien watched the edit and corrected it (step 11).
+            </p>
+            <p>
+              Cinema's craft of framing and sequence shots guides the choice of films. Two rules decide which
+              shots qualify (V91, V92).
+            </p>
+          </div>
+          <div class="vue" id="v12"></div>
+        </section>
+      </main>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "@mediapipe/tasks-audio": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.3/+esm"
+        }
+      }
+    </script>
+    <script type="module" src="how-it-works.js"></script>
+  </body>
+</html>

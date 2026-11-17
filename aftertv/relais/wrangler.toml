@@ -1,0 +1,14 @@
+# After TV — relais dashboard -> spectateurs (voir worker.js).
+# Déployer : npx wrangler deploy   puis   npx wrangler secret put AFTERTV_CLE
+name = "after-tv-relais"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[[durable_objects.bindings]]
+name = "CANAL"
+class_name = "Canal"
+
+# Durable Objects « SQLite » : ceux qu'offre l'offre gratuite de Workers.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Canal"]

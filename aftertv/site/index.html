@@ -1,0 +1,3106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      if (window.top !== window) document.documentElement.classList.add('dans-cadre');
+    </script>
+    <meta charset="utf-8" />
+
+    <script type="importmap">
+      {
+        "imports": {
+          "@mediapipe/tasks-audio": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.3/+esm"
+        }
+      }
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>After TV</title>
+    <meta name="description" content="VJ Rien Live 24/7" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="manifest" href="site.webmanifest" />
+    <link rel="canonical" href="https://odcstudio.fr/after-tv/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="After TV" />
+    <meta property="og:title" content="After TV" />
+    <meta property="og:description" content="VJ Rien Live 24/7" />
+    <meta property="og:url" content="https://odcstudio.fr/after-tv/" />
+    <meta property="og:image" content="https://odcstudio.fr/after-tv/og.png?v=2" />
+    <meta property="og:image:width" content="2400" />
+    <meta property="og:image:height" content="1260" />
+    <meta property="og:image:alt" content="AFTER TV in white on a black screen" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="After TV" />
+    <meta name="twitter:description" content="VJ Rien Live 24/7" />
+    <meta name="twitter:image" content="https://odcstudio.fr/after-tv/og.png?v=2" />
+
+    <link rel="stylesheet" href="interface.css" />
+    <style>
+      :root {
+        --fond: #000;
+        --texte: #f2f2f2;
+        --discret: rgba(242, 242, 242, 0.55);
+        --drop: #3ddc84;
+        --break: #ff9f45;
+        --suspension: #6c9cff;
+        --hyper: #ff4d9d;
+        --one_shot: #f2f2f2;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: var(--fond);
+        color: var(--texte);
+        font:
+          14px/1.4 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        overflow: hidden;
+      }
+      video,
+      .vignette {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: var(--fond);
+      }
+      video {
+        opacity: 0;
+      }
+      video.visible {
+        opacity: 1;
+      }
+      .vignette {
+        background-size: cover;
+        background-position: center;
+      }
+      #bandeau {
+        position: fixed;
+        z-index: 1000;
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        transition: opacity 0.6s;
+      }
+      body.calme #bandeau {
+        opacity: 0;
+      }
+      #bandeau button {
+        font: inherit;
+        color: var(--texte);
+        background: rgba(0, 0, 0, 0.55);
+        border: 1px solid var(--discret);
+        border-radius: 999px;
+        padding: 6px 14px;
+        cursor: pointer;
+      }
+      #bandeau button[aria-pressed='true'] {
+        background: var(--texte);
+        color: #000;
+      }
+      #titre {
+        color: var(--discret);
+        margin-left: auto;
+        text-align: right;
+      }
+      #depart {
+        position: fixed;
+        z-index: 999;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+      #depart[hidden] {
+        display: none;
+      }
+      body.silence #depart,
+      body.silence #depart[hidden] {
+        display: grid;
+        background: #000;
+        animation: fondu-noir 1.5s ease-in both;
+      }
+      @keyframes fondu-noir {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      body.silence #miroir,
+      body.silence #vignette {
+        visibility: hidden;
+      }
+      body.trou #miroir,
+      body.trou #vignette {
+        visibility: hidden;
+      }
+      body.silence #debug[hidden] ~ #indicateurs {
+        visibility: hidden;
+      }
+      #miroir .couche {
+        position: fixed;
+        inset: 0;
+        transition: filter 120ms linear;
+      }
+      #miroir video {
+        transition: none;
+      }
+      #ecoute {
+        display: none;
+      }
+      body.pilote #ecoute:not(:empty),
+      body.debug #ecoute:not(:empty) {
+        display: inline;
+      }
+      #indicateurs #avance {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+      body.pilote #indicateurs #avance.la,
+      body.debug #indicateurs #avance.la {
+        display: inline-flex;
+      }
+      #avance .rail {
+        width: 110px;
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(242, 242, 242, 0.25);
+        overflow: hidden;
+      }
+      #avance .rail i {
+        display: block;
+        height: 100%;
+        background: var(--texte);
+      }
+      #avance.fin .rail i {
+        background: #ff9f45;
+      }
+      #indicateurs {
+        position: fixed;
+        z-index: 1000;
+        top: 16px;
+        left: 16px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      #indicateurs span {
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 6px;
+        padding: 5px 10px;
+      }
+      body.debug #indicateurs {
+        right: calc(min(520px, 100% - 32px) + 32px);
+      }
+      @media (max-width: 760px) {
+        body.debug #indicateurs {
+          right: 16px;
+        }
+      }
+      #indicateurs .voyant {
+        display: none;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+      }
+      body.kicks #indicateurs .voyant {
+        display: inline-flex;
+      }
+      #indicateurs #paire,
+      body.kicks #indicateurs #paire {
+        display: none;
+      }
+      body.debug #indicateurs #paire {
+        display: inline-flex;
+      }
+      #indicateurs #paire.on {
+        color: #ff9f45;
+      }
+      #indicateurs #paire.on i {
+        background: #ff9f45;
+        box-shadow: 0 0 14px 5px rgba(255, 159, 69, 0.8);
+        transform: scale(1.5);
+      }
+      #indicateurs .voyant i {
+        display: block;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: rgba(242, 242, 242, 0.18);
+        transition:
+          background 0.18s,
+          box-shadow 0.18s,
+          transform 0.18s;
+      }
+      #indicateurs .voyant.bat i {
+        background: #fff;
+        box-shadow: 0 0 14px 5px rgba(255, 255, 255, 0.9);
+        transform: scale(1.5);
+        transition: none;
+      }
+      #mode {
+        color: #000;
+      }
+      #mode:empty,
+      #style:empty,
+      #tempo:empty {
+        display: none;
+      }
+      #endirect {
+        display: none;
+        color: #ff4d4d;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+      body.direct #endirect {
+        display: inline;
+      }
+      #debug {
+        --ok: #6c9cff;
+        --alerte: #ff9f45;
+        --trait: rgba(242, 242, 242, 0.16);
+        position: fixed;
+        z-index: 1001;
+        top: 56px;
+        right: 16px;
+        width: min(520px, calc(100% - 32px));
+        container-type: inline-size;
+        max-height: calc(100% - 140px);
+        overflow: auto;
+        overscroll-behavior: contain;
+        box-sizing: border-box;
+        background: rgba(8, 10, 16, 0.88);
+        border: 1px solid var(--trait);
+        border-radius: 8px;
+        padding: 12px;
+        font:
+          13px/1.4 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+      }
+      #debug[hidden] {
+        display: none;
+      }
+      #debug section {
+        margin: 0 0 14px;
+      }
+      #debug section:last-child {
+        margin-bottom: 0;
+      }
+      #debug h3 {
+        margin: 0 0 6px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--discret);
+      }
+      #debug .ligne {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 10px;
+      }
+      #debug .source {
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        font-size: 15px;
+      }
+      #debug .source.direct {
+        color: #ff4d4d;
+      }
+      #debug .source.veille {
+        color: var(--alerte);
+      }
+      #debug .discret {
+        color: var(--discret);
+      }
+      #debug .mode {
+        color: #000;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        border-radius: 6px;
+        padding: 3px 10px;
+      }
+      #debug .pastilles {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      #debug .p {
+        border: 1px solid var(--discret);
+        border-radius: 999px;
+        padding: 2px 10px 2px 8px;
+      }
+      #debug .p.on {
+        background: var(--texte);
+        color: #000;
+        border-color: var(--texte);
+        font-weight: 600;
+      }
+      #debug .p.off {
+        color: var(--discret);
+        border-style: dashed;
+        text-decoration: line-through;
+      }
+      #debug .p.info {
+        border-style: solid;
+      }
+      #debug .lien {
+        border-left: 3px solid var(--ok);
+        padding: 2px 0 2px 10px;
+      }
+      #debug .compte {
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+      }
+      #debug .carte {
+        border: 1px solid var(--trait);
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-bottom: 6px;
+      }
+      #debug .carte .tete {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+      }
+      #debug .num {
+        font-weight: 700;
+        font-size: 15px;
+        background: var(--texte);
+        color: #000;
+        border-radius: 4px;
+        min-width: 22px;
+        text-align: center;
+        padding: 0 4px;
+      }
+      #debug .nom {
+        font-weight: 600;
+        overflow-wrap: anywhere;
+      }
+      #debug .barre {
+        height: 6px;
+        background: var(--trait);
+        border-radius: 3px;
+        margin: 6px 0 4px;
+        overflow: hidden;
+      }
+      #debug .barre i {
+        display: block;
+        height: 100%;
+        background: var(--texte);
+      }
+      #debug .meta {
+        color: var(--discret);
+        font-variant-numeric: tabular-nums;
+      }
+      #debug .paire {
+        border: 1px solid var(--trait);
+        border-left: 4px solid var(--ok);
+        border-radius: 6px;
+        padding: 6px 10px;
+        margin-bottom: 6px;
+      }
+      #debug .paire.rien {
+        border-color: var(--alerte);
+        border-left-color: var(--alerte);
+        background: rgba(255, 159, 69, 0.14);
+      }
+      #debug .paire .qui {
+        overflow-wrap: anywhere;
+      }
+      #debug .paire .alerte {
+        color: var(--alerte);
+        font-weight: 700;
+        letter-spacing: 0.06em;
+      }
+      #debug .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+      }
+      #debug .t {
+        font:
+          12px/1.3 ui-monospace,
+          'Cascadia Mono',
+          Consolas,
+          monospace;
+        border: 1px solid var(--trait);
+        border-radius: 4px;
+        padding: 1px 6px;
+        color: var(--discret);
+        overflow-wrap: anywhere;
+      }
+      #debug .t.commun {
+        background: var(--ok);
+        border-color: var(--ok);
+        color: #000;
+        font-weight: 700;
+      }
+      #debug .vide {
+        color: var(--discret);
+        font-style: italic;
+      }
+      #debug .barre.fin i {
+        background: var(--alerte);
+      }
+      #debug .temps {
+        display: flex;
+        justify-content: space-between;
+        font-variant-numeric: tabular-nums;
+      }
+      #debug .bande {
+        display: grid;
+        grid-template-columns: 64px repeat(64, 1fr);
+        gap: 3px 0;
+        margin-top: 8px;
+        font:
+          10px/1 system-ui,
+          sans-serif;
+        color: var(--discret);
+      }
+      #debug .bande .lab {
+        grid-column: 1;
+        align-self: center;
+        white-space: nowrap;
+      }
+      #debug .bande .c {
+        height: 11px;
+      }
+      #debug .bande .c.m {
+        border-left: 1px solid var(--trait);
+      }
+      #debug .bande .k1 {
+        background: var(--texte);
+      }
+      #debug .bande .k0 {
+        background: rgba(242, 242, 242, 0.08);
+      }
+      #debug .bande .drop {
+        background: var(--drop);
+      }
+      #debug .bande .break {
+        background: var(--break);
+      }
+      #debug .bande .niv {
+        height: 22px;
+        position: relative;
+      }
+      #debug .bande .niv i {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 1px;
+        background: var(--ok);
+      }
+      #debug .bande .niv b {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: var(--texte);
+      }
+      #debug .bande .num {
+        grid-row: 1;
+        font-size: 9px;
+        min-width: 0;
+        padding: 0;
+        background: none;
+        color: var(--discret);
+        font-weight: 400;
+        text-align: left;
+      }
+      #debug .raison {
+        border-left: 3px solid var(--texte);
+        padding: 2px 0 2px 8px;
+        margin-top: 8px;
+      }
+      #debug .dbg-tete {
+        position: sticky;
+        top: -12px;
+        z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: -12px -12px 12px;
+        padding: 10px 12px;
+        background: rgb(8, 10, 16);
+        border-bottom: 1px solid var(--trait);
+        border-radius: 8px 8px 0 0;
+      }
+      #debug .dbg-qui {
+        flex: 1;
+        min-width: 0;
+      }
+      #debug .dbg-age {
+        margin-left: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+      #debug .dbg-chaine {
+        margin-top: 2px;
+        color: var(--discret);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+      }
+      #debug .dbg-bouton-expert {
+        flex: none;
+        min-height: 32px;
+        padding: 0 14px;
+        cursor: pointer;
+        font:
+          600 12px/1 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--texte);
+        background: transparent;
+        border: 1px solid var(--discret);
+        border-radius: 999px;
+      }
+      #debug .dbg-bouton-expert[aria-pressed='true'] {
+        background: var(--texte);
+        color: #000;
+        border-color: var(--texte);
+      }
+      #debug .dbg-bouton-expert:focus-visible {
+        outline: 2px solid var(--texte);
+        outline-offset: 2px;
+      }
+      #debug a.dbg-doc {
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+      }
+      #debug h3 .etape {
+        display: inline-grid;
+        place-items: center;
+        width: 18px;
+        height: 18px;
+        margin-right: 8px;
+        border-radius: 4px;
+        background: var(--texte);
+        color: #000;
+        letter-spacing: 0;
+        font-weight: 700;
+      }
+      #debug .dbg-silence {
+        margin-bottom: 10px;
+        padding: 8px 10px;
+        border: 2px solid var(--alerte);
+        border-radius: 6px;
+        background: rgba(255, 159, 69, 0.16);
+        color: var(--alerte);
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      #debug .dbg-silence::before {
+        content: '▲ ';
+      }
+      #debug .dbg-entendu.muet .dbg-grille,
+      #debug .dbg-entendu.muet .dbg-spectre {
+        opacity: 0.35;
+      }
+      #debug .dbg-pouls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      #debug .dbg-kick {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 52px;
+        height: 52px;
+        border-radius: 6px;
+        border: 1px solid var(--discret);
+        background: rgba(242, 242, 242, 0.08);
+        color: var(--discret);
+        font:
+          700 12px/1 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        transition:
+          background 0.18s,
+          color 0.18s,
+          box-shadow 0.18s;
+      }
+      #debug .dbg-kick.bat {
+        background: #fff;
+        color: #000;
+        border-color: #fff;
+        box-shadow: 0 0 18px 4px rgba(255, 255, 255, 0.7);
+        transition: none;
+      }
+      #debug .dbg-infos {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font:
+          13px/1.4 ui-monospace,
+          'Cascadia Mono',
+          Consolas,
+          monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      #debug .dbg-grille {
+        display: grid;
+        grid-template-columns: 76px repeat(16, minmax(0, 1fr));
+        gap: 3px;
+        align-items: center;
+        font:
+          12px/1 ui-monospace,
+          'Cascadia Mono',
+          Consolas,
+          monospace;
+      }
+      #debug .dbg-grille .lab {
+        color: var(--discret);
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        white-space: nowrap;
+      }
+      #debug .dbg-grille .tn {
+        grid-column: span 4;
+        padding: 0 0 2px 2px;
+        color: var(--discret);
+      }
+      #debug .dbg-grille .tn.on {
+        color: var(--texte);
+        font-weight: 700;
+      }
+      #debug .dbg-grille .debut {
+        margin-left: 4px;
+      }
+      #debug .dbg-grille .c {
+        height: 16px;
+        border-radius: 2px;
+        background: rgba(242, 242, 242, 0.1);
+      }
+      #debug .dbg-grille .c.x {
+        background: rgba(242, 242, 242, 0.72);
+      }
+      #debug .dbg-grille .c.tete {
+        background: rgba(242, 242, 242, 0.32);
+      }
+      #debug .dbg-grille .c.x.tete {
+        background: #fff;
+        box-shadow: 0 0 8px 1px rgba(255, 255, 255, 0.8);
+      }
+      #debug .dbg-spectre-zone {
+        margin-top: 12px;
+      }
+      #debug .dbg-spectre {
+        display: grid;
+        grid-template-columns: repeat(24, minmax(0, 1fr));
+        gap: 2px;
+        height: 48px;
+      }
+      #debug .dbg-spectre .b {
+        position: relative;
+        background: repeating-linear-gradient(to top, rgba(242, 242, 242, 0.1) 0 4px, transparent 4px 6px);
+      }
+      #debug .dbg-spectre .b i {
+        position: absolute;
+        inset: 0;
+        clip-path: inset(100% 0 0 0);
+        background: repeating-linear-gradient(to top, var(--texte) 0 4px, transparent 4px 6px);
+      }
+      #debug .dbg-bornes {
+        display: grid;
+        grid-template-columns: repeat(24, minmax(0, 1fr));
+        gap: 2px;
+        margin-top: 4px;
+        font-size: 12px;
+        color: var(--discret);
+      }
+      #debug .dbg-bornes span {
+        white-space: nowrap;
+        border-left: 1px solid var(--trait);
+        padding-left: 3px;
+      }
+      #debug .dbg-bornes .m {
+        text-align: center;
+      }
+      #debug .dbg-bornes .a {
+        text-align: right;
+      }
+      #debug .dbg-reaction {
+        margin-bottom: 10px;
+        padding: 8px 10px;
+        border: 1px solid var(--trait);
+        border-left: 4px solid var(--discret);
+        border-radius: 6px;
+      }
+      #debug .dbg-reaction.fraiche {
+        border-left-color: var(--texte);
+        background: rgba(242, 242, 242, 0.07);
+      }
+      #debug .dbg-reaction .quoi {
+        font-weight: 700;
+        font-size: 14px;
+      }
+      #debug .dbg-entetes,
+      #debug .dbg-ded {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1fr);
+        gap: 2px 10px;
+      }
+      #debug .dbg-entetes {
+        padding: 0 8px 4px 11px;
+        color: var(--discret);
+        font-size: 12px;
+      }
+      #debug .dbg-ded {
+        padding: 5px 8px;
+        border-left: 3px solid transparent;
+        border-top: 1px solid var(--trait);
+      }
+      #debug .dbg-ded .fam {
+        padding-top: 1px;
+        color: var(--discret);
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      #debug .dbg-ded .dit,
+      #debug .dbg-ded .effet {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      #debug .dbg-ded .effet {
+        color: var(--discret);
+      }
+      #debug .dbg-ded .effet::before {
+        content: '→ ';
+      }
+      #debug .dbg-ded.on {
+        border-left-color: var(--texte);
+        background: rgba(242, 242, 242, 0.07);
+      }
+      #debug .dbg-ded.on .effet {
+        color: var(--texte);
+        font-weight: 600;
+      }
+      #debug .dbg-ded.absent .dit {
+        color: var(--discret);
+      }
+      #debug .dbg-ded.mesure {
+        grid-template-columns: 72px minmax(0, 1fr);
+      }
+      #debug .dbg-ded .plein {
+        grid-column: 2 / -1;
+        margin-top: 2px;
+      }
+      #debug .dbg-mono {
+        font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+        font-size: 12px;
+      }
+      #debug .dbg-sous {
+        margin: 12px 0 4px;
+        color: var(--discret);
+        font-size: 12px;
+      }
+      #debug .dbg-regle {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 2px 10px;
+        align-items: start;
+        margin-bottom: 6px;
+        padding: 8px 10px;
+        border: 1px solid var(--texte);
+        border-radius: 6px;
+      }
+      #debug .dbg-regle .num,
+      #debug .dbg-dort .num {
+        font:
+          700 12px/20px ui-monospace,
+          'Cascadia Mono',
+          Consolas,
+          monospace;
+      }
+      #debug .dbg-regle .titre {
+        font-weight: 700;
+      }
+      #debug .dbg-titre {
+        margin: 4px 0 8px;
+        line-height: 1.5;
+      }
+      #debug .dbg-fours {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 14px;
+      }
+      #debug .dbg-fours .four.cherche {
+        font-weight: 700;
+        animation: dbg-cherche 1s steps(2) infinite;
+      }
+      #debug .dbg-fours .four.attente,
+      #debug .dbg-fours .four.inutile,
+      #debug .dbg-fours .four.repos {
+        opacity: 0.55;
+      }
+      @keyframes dbg-cherche {
+        50% {
+          opacity: 0.4;
+        }
+      }
+      #debug .dbg-regle .regle-texte {
+        margin-top: 2px;
+      }
+      #debug .dbg-regle .joue {
+        margin-top: 4px;
+      }
+      #debug .dbg-dort {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 2px 10px;
+        align-items: baseline;
+        padding: 3px 10px;
+        color: var(--discret);
+      }
+      #debug .dbg-dort .num {
+        background: none;
+        color: var(--discret);
+        border: 1px dashed var(--discret);
+      }
+      #debug .dbg-couches {
+        list-style: none;
+        margin: 8px 0 0;
+        padding: 0;
+        display: grid;
+        gap: 4px;
+      }
+      #debug .dbg-couches li {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: baseline;
+      }
+      #debug h3.dbg-zone {
+        margin: 18px 0 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--texte);
+        color: var(--texte);
+      }
+      #debug .dbg-brut {
+        display: grid;
+        grid-template-columns: minmax(0, 42%) minmax(0, 1fr);
+        gap: 1px 10px;
+        margin: 0;
+        font:
+          12px/1.45 ui-monospace,
+          'Cascadia Mono',
+          Consolas,
+          monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      #debug .dbg-brut dt {
+        color: var(--discret);
+        overflow-wrap: anywhere;
+      }
+      #debug .dbg-brut dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
+      @container (max-width: 440px) {
+        #debug .dbg-entetes {
+          display: none;
+        }
+        #debug .dbg-ded,
+        #debug .dbg-ded.mesure {
+          grid-template-columns: 64px minmax(0, 1fr);
+        }
+        #debug .dbg-ded .effet {
+          grid-column: 2;
+        }
+        #debug .dbg-grille {
+          grid-template-columns: 60px repeat(16, minmax(0, 1fr));
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #debug .dbg-kick,
+        #debug .dbg-kick.bat {
+          transition: none;
+          box-shadow: none;
+        }
+        #debug .dbg-grille .c.x.tete {
+          box-shadow: none;
+        }
+      }
+      @media (max-width: 480px) {
+        #debug {
+          top: 48px;
+          right: 16px;
+          max-height: calc(100% - 120px);
+        }
+      }
+      #credit {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        max-width: calc(100vw - 24px);
+        font:
+          12px/1.4 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        color: rgba(242, 242, 242, 0.7);
+        background: rgba(0, 0, 0, 0.45);
+        padding: 5px 10px;
+        border-radius: 999px;
+      }
+      #credit a {
+        color: #f2f2f2;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      #credit a:hover {
+        text-decoration: underline;
+      }
+      #credit svg {
+        flex: none;
+      }
+      @media (max-width: 720px) {
+        #credit {
+          top: 56px;
+        }
+      }
+      html.dans-cadre #depart,
+      html.dans-cadre #indicateurs,
+      html.dans-cadre #credit,
+      html.dans-cadre #bandeau,
+      html.dans-cadre #debug {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="vignette" id="vignette"></div>
+    <div id="miroir"></div>
+    <div id="depart">After TV</div>
+    <div id="debug" hidden></div>
+    <div id="indicateurs">
+      <span id="kick" class="voyant" title="grosse caisse entendue dans le son, sans le tempo"
+        >KICK<i></i></span
+      ><span id="bpm" class="voyant" title="temps du tempo du dashboard">BPM<i></i></span
+      ><span id="paire" class="voyant" title="une paire de montage vient d'entrer (codex V52)"
+        >PAIRE<i></i></span
+      ><span id="mode"></span><span id="style"></span><span id="tempo"></span><span id="ecoute"></span
+      ><span id="avance" title="avancement du morceau reconnu"
+        ><b class="rail"><i></i></b><time></time
+      ></span>
+    </div>
+    <div id="credit">
+      a project by
+      <a href="https://www.instagram.com/vj_rien_/" target="_blank" rel="noopener"
+        ><svg
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <rect x="3" y="3" width="18" height="18" rx="5" />
+          <circle cx="12" cy="12" r="4" />
+          <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></svg
+        >@vj_rien_</a
+      >
+      and
+      <a href="https://www.instagram.com/enjoy.dot/" target="_blank" rel="noopener"
+        ><svg
+          viewBox="0 0 24 24"
+          width="14"
+          height="14"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <rect x="3" y="3" width="18" height="18" rx="5" />
+          <circle cx="12" cy="12" r="4" />
+          <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" /></svg
+        >@enjoy.dot</a
+      >
+    </div>
+    <div id="bandeau">
+      <span id="endirect">● En direct</span>
+      <button data-mood="house">House</button>
+      <button data-mood="techno">Techno</button>
+      <button data-mood="tout">Tout</button>
+      <button id="plein">Plein écran</button>
+      <button id="btn-hd" aria-pressed="false" title="Seulement les loops qui ont leur version HD">HD</button>
+      <button id="btn-debug" aria-pressed="false">Debug</button>
+      <span id="titre"></span>
+    </div>
+    <script type="module">
+      import { MontageSeul, enCommun, tagsDe } from './montage.js';
+      import { index, plan, enDirect } from './miroir.js';
+      import { reglages as reglagesImage, creeWiggle, applique, filtre } from './image.js';
+      import { lireReglages } from './reglages.js';
+      import { parametreSur, estLocalHote, adresseSure } from './adresses.js';
+      const q = new URLSearchParams(location.search);
+      const config = await fetch('config.json', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : {}))
+        .catch(() => ({}));
+      const ADRESSES = new Set(['manifest', 'medias']);
+      const reglage = (cle2, defaut) =>
+        (ADRESSES.has(cle2) ? parametreSur(q, cle2, [config.medias]) : q.get(cle2)) ?? config[cle2] ?? defaut;
+      const base = reglage('manifest', 'manifest.json');
+      const racine = new URL('.', new URL(base, location.href)).href;
+      const dansCadre = document.documentElement.classList.contains('dans-cadre');
+      const canalDoc =
+        !dansCadre && 'BroadcastChannel' in window ? new BroadcastChannel('aftertv-doc') : null;
+      let docVue = 0;
+      if (canalDoc)
+        canalDoc.onmessage = (m) => {
+          if (m.data && m.data.t === 'hello') docVue = Date.now();
+        };
+      function versDoc(msg) {
+        if (!canalDoc || Date.now() - docVue > 1e4) return;
+        try {
+          canalDoc.postMessage({ ...msg, ts: Date.now() });
+        } catch {}
+      }
+      const directBrut = q.get('direct');
+      const paramDirect =
+        directBrut === null || directBrut === '' || directBrut === '1' || estLocalHote(location.hostname)
+          ? directBrut
+          : (adresseSure(directBrut, [location.origin, config.direct], location.href) ?? '1');
+      const suitDashboard = !!config.pilote || dansCadre || paramDirect !== null;
+      const adresseRelais = paramDirect === '1' ? config.direct || null : paramDirect || null;
+      const visiteur = dansCadre ? null : lireReglages();
+      const moodVisiteur = (s) =>
+        ['house', 'techno', 'tout'].includes(s) ? s : s === 'auto' ? 'tout' : 'house';
+      let mood = reglage('mood', null) ?? (visiteur ? moodVisiteur(visiteur.style) : 'tout');
+      const bpm = Number(reglage('bpm', 126)) || 126;
+      let montage = null;
+      const medias = reglage('medias');
+      const baseMedias = medias ? new URL(medias, location.href).href : racine;
+      const url = (rel) => new URL(rel, baseMedias).href;
+      function finAttente() {
+        document.getElementById('depart').hidden = true;
+        document.getElementById('vignette').style.backgroundImage = 'none';
+      }
+      const NOMS_MODES = {
+        drop: 'Drop',
+        break: 'Break',
+        suspension: 'Suspension',
+        hyper: 'Hyper',
+        one_shot: 'One shot',
+      };
+      const nomFamille = (f) => f.charAt(0).toUpperCase() + f.slice(1);
+      function indique(mode, style, tempo, familles, repli) {
+        const m = document.getElementById('mode');
+        m.textContent = NOMS_MODES[mode] || '';
+        m.style.background = mode ? `var(--${mode}, #f2f2f2)` : '';
+        document.getElementById('style').textContent =
+          familles && familles.length
+            ? familles.map(nomFamille).join(' · ') + (repli && repli.includes('montage') ? ' (repli)' : '')
+            : style === 'house'
+              ? 'House'
+              : style === 'techno'
+                ? 'Techno'
+                : style === 'les deux'
+                  ? 'House · Techno'
+                  : style === 'tout'
+                    ? 'Tous styles'
+                    : '';
+        document.getElementById('tempo').textContent =
+          tempo === 'mesure' ? 'tempo en mesure' : tempo ? `${Math.round(tempo)} BPM` : '';
+      }
+      const finBat = {};
+      function bat(id) {
+        if (id === 'kick' && document.body.classList.contains('trou')) document.body.classList.remove('trou');
+        if (id === 'kick') wiggleSurKick();
+        consoleBat(id);
+        versDoc({ t: 'bat', id });
+        const v = document.getElementById(id);
+        if (!v) return;
+        v.classList.add('bat');
+        clearTimeout(finBat[id]);
+        finBat[id] = setTimeout(() => v.classList.remove('bat'), 70);
+      }
+      const PULSE_MARGE_S = 1.6;
+      const pulseVu = { kicks: 0, temps: 0 };
+      let pulseRetard = Infinity,
+        kicksDirects = false;
+      function pulse(p) {
+        if (kicksDirects || !p) return;
+        document.body.classList.add('kicks');
+        const maintenant = Date.now() / 1e3;
+        for (const [cle2, id] of [
+          ['kicks', 'kick'],
+          ['temps', 'bpm'],
+        ]) {
+          for (const t of p[cle2] || []) {
+            if (!(t > pulseVu[cle2])) continue;
+            pulseVu[cle2] = t;
+            pulseRetard = Math.min(pulseRetard, maintenant - t);
+            const dans = t + pulseRetard + PULSE_MARGE_S - maintenant;
+            if (dans > -0.2) setTimeout(() => bat(id), Math.max(0, dans * 1e3));
+          }
+        }
+      }
+      function ouvreKicks(hote) {
+        let ws;
+        try {
+          ws = new WebSocket(`ws://${hote}/kicks`);
+        } catch {
+          return;
+        }
+        ws.onopen = () => {
+          kicksDirects = true;
+          document.body.classList.add('kicks');
+        };
+        ws.onmessage = (m) => {
+          let d;
+          try {
+            d = JSON.parse(m.data);
+          } catch {
+            return;
+          }
+          if (d.kick > 0) bat('kick');
+          if (d.temps > 0) bat('bpm');
+        };
+        ws.onclose = () => {
+          kicksDirects = false;
+          setTimeout(() => ouvreKicks(hote), 5e3);
+        };
+      }
+      let pilote = null;
+      function ouvrePilote() {
+        pilote = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+        pilote.onopen = () => document.body.classList.add('pilote');
+        pilote.onclose = () => {
+          document.body.classList.remove('pilote');
+          setTimeout(ouvrePilote, 3e3);
+        };
+        pilote.onmessage = null;
+      }
+      if (config.pilote) {
+        ouvrePilote();
+        ouvreKicks(location.host);
+      } else if (q.has('debug') && suitDashboard) ouvreKicks('127.0.0.1:8765');
+      function choisisMood(m) {
+        const direct2 = suitDashboard && document.body.classList.contains('direct');
+        if (direct2 && pilote?.readyState === 1) pilote.send(JSON.stringify({ kind: 'mood', value: m }));
+        else if (direct2 && relaisWs?.readyState === 1)
+          relaisWs.send(JSON.stringify({ kind: 'mood', value: m }));
+        else changeMood(m);
+      }
+      function montreMood(m) {
+        document
+          .querySelectorAll('[data-mood]')
+          .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mood === m)));
+      }
+      function montreEcoute(e) {
+        const son = e.son || {},
+          mu = e.musique || {};
+        const entend = son.alerte
+          ? 'pas de son'
+          : son.lecture || son.section
+            ? `entend ${son.lecture || son.section}`
+            : '';
+        const auSon = mu.style_son ? mu.style_son.style : null;
+        const style = mu.style_lu
+          ? `style lu ${mu.style_lu}`
+          : auSon
+            ? `style au son ${auSon}`
+            : mu.genres && mu.genres.length
+              ? `style ? (${mu.genres.join(', ')})`
+              : mu.ecoute
+                ? 'style pas encore lu'
+                : '';
+        const titre = titreDe(e)
+          ? titreDe(e)
+          : mu.ecoute
+            ? `titre pas encore reconnu (${mu.requetes || 0} essai${mu.requetes > 1 ? 's' : ''})`
+            : '';
+        document.getElementById('ecoute').textContent = [entend, style, titre].filter(Boolean).join(' · ');
+      }
+      let morceauA = null,
+        decalageMin = Infinity;
+      function avancement(m) {
+        if (!m || m.position_s == null || m.a == null) return null;
+        if (m.a !== morceauA) {
+          morceauA = m.a;
+          decalageMin = Math.min(decalageMin, Date.now() / 1e3 - m.a);
+        }
+        let pos = Math.max(0, m.position_s + (Date.now() / 1e3 - m.a - decalageMin) * (m.vitesse || 1));
+        const duree = m.duree_s || null;
+        if (duree) pos = Math.min(pos, duree);
+        return { pos, duree, reste: duree ? duree - pos : null, fin: duree ? duree - pos < 30 : false };
+      }
+      const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+      function montreAvance() {
+        const el = document.getElementById('avance'),
+          a = avancement(dernierEtat && dernierEtat.morceau);
+        el.classList.toggle('la', !!a);
+        if (!a) return;
+        el.classList.toggle('fin', a.fin);
+        el.querySelector('.rail').style.display = a.duree ? '' : 'none';
+        el.querySelector('.rail i').style.width = a.duree ? `${(a.pos / a.duree) * 100}%` : '0';
+        el.querySelector('time').textContent = a.duree
+          ? `${mmss(a.pos)} / ${mmss(a.duree)} · −${mmss(a.reste)}`
+          : mmss(a.pos);
+      }
+      setInterval(montreAvance, 500);
+      const titreDe = (e) =>
+        e.artiste && e.titre
+          ? `${e.artiste} — ${e.titre}${e.morceau && e.morceau.confiance === 'à confirmer' ? ' ?' : ''}`
+          : '';
+      function changeMood(m) {
+        mood = m;
+        montage?.setMood(mood);
+        document
+          .querySelectorAll('[data-mood]')
+          .forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mood === mood)));
+      }
+      async function lisStyle() {
+        try {
+          const s = await (await fetch(url(reglage('style')), { cache: 'no-store' })).json();
+          if (s.mood && s.mood !== mood) changeMood(s.mood === 'les deux' ? 'tout' : s.mood);
+          montage?.setFamilles(s.familles || []);
+          if (direct())
+            document.getElementById('titre').textContent =
+              s.artiste && s.titre ? `${s.artiste} — ${s.titre}` : '';
+        } catch {}
+      }
+      let idx = index([]),
+        dernierRecu = null;
+      const couches = new Map();
+      const direct = () => suitDashboard && enDirect(dernierRecu, Date.now());
+      function couche(n) {
+        if (!couches.has(n)) {
+          const div = document.createElement('div');
+          div.className = 'couche';
+          div.style.zIndex = String(n);
+          const videos = [0, 1].map(() => {
+            const v = document.createElement('video');
+            Object.assign(v, { muted: true, playsInline: true, loop: true, preload: 'auto' });
+            v.setAttribute('muted', '');
+            v.setAttribute('playsinline', '');
+            div.appendChild(v);
+            return v;
+          });
+          document.getElementById('miroir').appendChild(div);
+          couches.set(n, { div, videos, actif: 0, id: null, t: null });
+        }
+        return couches.get(n);
+      }
+      const lecture = {
+        bascules: 0,
+        attente_ms: 0,
+        relances: 0,
+        abandons: 0,
+        en_attente: 0,
+        noirs_evites: 0,
+        hd_absents: 0,
+      };
+      const ATTENTE_MAX_MS = 8e3;
+      function enMemoire(v, t) {
+        for (let i = 0; i < v.buffered.length; i++)
+          if (t >= v.buffered.start(i) && t < v.buffered.end(i) - 0.3) return true;
+        return false;
+      }
+      function quandImagePrete(v, fait, rate) {
+        const debut = performance.now();
+        let fini = false;
+        const fin = (f) => {
+          if (!fini) {
+            fini = true;
+            clearInterval(veille);
+            f(performance.now() - debut);
+          }
+        };
+        const pret = () => {
+          if (v.readyState >= 2 && !v.seeking) fin(fait);
+        };
+        v.requestVideoFrameCallback?.(pret);
+        const veille = setInterval(() => {
+          if (v.error || performance.now() - debut > ATTENTE_MAX_MS) fin(rate);
+          else pret();
+        }, 80);
+      }
+      const cle = (p) => `${p.loop.id}@${p.t}`;
+      function prepare(c, p) {
+        const cachee = c.videos[1 - c.actif];
+        const demande = p;
+        c.enCours = demande;
+        lecture.en_attente++;
+        const src = url(fichier(p.loop));
+        const termine = (montree) => {
+          lecture.en_attente--;
+          c.enCours = null;
+          if (montree) c.vu = cle(demande);
+          decide(c);
+        };
+        const lance = () => {
+          const depart = c.voulu && c.voulu.loop.id === demande.loop.id ? c.voulu.depart : demande.depart;
+          if (cachee.duration) cachee.currentTime = depart * cachee.duration;
+          cachee.play().catch(() => {});
+          quandImagePrete(
+            cachee,
+            (ms) => {
+              lecture.bascules++;
+              lecture.attente_ms += ms;
+              const avant = c.videos[c.actif];
+              cachee.classList.add('visible');
+              finAttente();
+              avant.classList.remove('visible');
+              avant.pause();
+              c.actif = 1 - c.actif;
+              if (c.voulu && c.voulu.loop.id === demande.loop.id) c.vu = cle(c.voulu);
+              termine(!(c.voulu && c.voulu.loop.id === demande.loop.id));
+            },
+            () => {
+              lecture.abandons++;
+              c.rate = cle(demande);
+              setTimeout(() => {
+                if (c.rate === cle(demande)) {
+                  c.rate = null;
+                  decide(c);
+                }
+              }, 5e3);
+              termine(false);
+            },
+          );
+        };
+        cachee.onloadedmetadata = null;
+        cachee.onerror = () => {
+          cachee.onerror = null;
+          cachee.onloadedmetadata = null;
+          if (src === url(demande.loop.video_hd || '')) {
+            demande.loop.hdAbsent = true;
+            lecture.hd_absents++;
+          } else {
+            lecture.abandons++;
+            c.rate = cle(demande);
+            setTimeout(() => {
+              if (c.rate === cle(demande)) {
+                c.rate = null;
+                decide(c);
+              }
+            }, 5e3);
+          }
+          termine(false);
+        };
+        if (cachee.src === src && cachee.readyState >= 1) {
+          cachee.onerror = null;
+          lance();
+        } else {
+          cachee.src = src;
+          cachee.onloadedmetadata = () => {
+            cachee.onloadedmetadata = null;
+            cachee.onerror = null;
+            lance();
+          };
+          cachee.load();
+        }
+      }
+      function decide(c) {
+        const p = c.voulu;
+        if (!p || c.enCours || cle(p) === c.vu || cle(p) === c.rate) return;
+        const v = c.videos[c.actif];
+        const memeLoop = v.classList.contains('visible') && v.src === url(fichier(p.loop));
+        if (memeLoop) {
+          const t = v.duration ? p.depart * v.duration : 0;
+          if (enMemoire(v, t)) {
+            v.currentTime = t;
+            c.vu = cle(p);
+            return;
+          }
+        }
+        prepare(c, p);
+      }
+      function montre(c, p) {
+        c.voulu = p;
+        decide(c);
+        c.div.style.opacity = String(p.opacite);
+        c.div.style.mixBlendMode = p.fusion;
+      }
+      const figee = new Map();
+      setInterval(() => {
+        for (const c of couches.values()) {
+          if (!(parseFloat(c.div.style.opacity || '1') > 0) || !c.voulu) continue;
+          const v = c.videos[c.actif];
+          if (!v.classList.contains('visible')) continue;
+          const f = figee.get(v) || { t: -1, n: 0 };
+          f.n = Math.abs(v.currentTime - f.t) < 0.02 ? f.n + 1 : 0;
+          f.t = v.currentTime;
+          figee.set(v, f);
+          if (v.paused || f.n === 2) {
+            lecture.relances++;
+            v.play().catch(() => {});
+          }
+          if (f.n >= 5 && !c.enCours) {
+            f.n = 0;
+            lecture.relances++;
+            prepare(c, { ...c.voulu, depart: v.duration ? v.currentTime / v.duration : 0 });
+          }
+        }
+      }, 500);
+      let dernierEtat = null,
+        dernierPlan = [];
+      const CLE_IMAGE = 'aftertv.debug.image';
+      const image = { actif: true, reglages: new Map(), coup: null, finCoup: null, wiggle: creeWiggle() };
+      try {
+        image.actif = localStorage.getItem(CLE_IMAGE) !== '0';
+      } catch {}
+      function poseFiltres() {
+        const coup = image.coup && Date.now() < image.coup.jusqua ? image.coup : null;
+        for (const [n, c] of couches) {
+          const r = image.reglages.get(n);
+          const f = r && image.actif ? filtre(applique(r, coup)) : 'none';
+          if (c.div.style.filter !== f) c.div.style.filter = f;
+        }
+      }
+      function regleImage(etat, p) {
+        const s = (etat && etat.son) || {};
+        image.reglages = reglagesImage(p, { section: s.section || null, bpm: Number(etat && etat.bpm) || 0 });
+        poseFiltres();
+      }
+      function wiggleSurKick() {
+        const e = dernierEtat,
+          s = (e && e.son) || {};
+        const coup = image.wiggle({
+          section: s.section,
+          mesure: typeof s.mesure === 'number' ? s.mesure : NaN,
+          maintenant: Date.now(),
+          bpm: Number(e && e.bpm) || 0,
+        });
+        if (!coup) return;
+        image.coup = coup;
+        poseFiltres();
+        clearTimeout(image.finCoup);
+        image.finCoup = setTimeout(
+          () => {
+            image.coup = null;
+            poseFiltres();
+          },
+          Math.max(60, coup.jusqua - Date.now()),
+        );
+      }
+      const journalLoops = { aLEcran: new Set(), sortie: new Map(), entrees: [], revues: 0 };
+      function noteLoops(p) {
+        if (document.body.classList.contains('silence')) return;
+        const maintenant = Date.now(),
+          ici = new Set(p.filter((x) => x.opacite > 0.05).map((x) => x.loop.colonne));
+        for (const c of journalLoops.aLEcran) if (!ici.has(c)) journalLoops.sortie.set(c, maintenant);
+        for (const c of ici) {
+          if (journalLoops.aLEcran.has(c)) continue;
+          const s = journalLoops.sortie.get(c);
+          if (s !== void 0 && maintenant - s > 6e5) journalLoops.revues++;
+          journalLoops.entrees.push(c);
+        }
+        journalLoops.aLEcran = ici;
+      }
+      function releveLoops() {
+        const j = journalLoops,
+          uniques = [...new Set(j.entrees)].filter((c) => c != null);
+        const r = {
+          loops: uniques.slice(-150).join(','),
+          entrees: j.entrees.length,
+          revues: j.revues,
+          distinctes: new Set([...j.sortie.keys(), ...j.aLEcran]).size,
+        };
+        j.entrees = [];
+        j.revues = 0;
+        return r;
+      }
+      function affiche(etat) {
+        const p = plan(etat, idx);
+        dernierEtat = etat;
+        dernierPlan = p;
+        noteLoops(p);
+        if (
+          p.length &&
+          ![...couches.values()].some((c) => c.videos.some((v) => v.classList.contains('visible')))
+        ) {
+          const vig = document.getElementById('vignette');
+          const img = `url("${url(p[0].loop.vignette)}")`;
+          if (vig.style.backgroundImage !== img) vig.style.backgroundImage = img;
+          document.getElementById('depart').hidden = true;
+        }
+        const vues = new Set(p.map((x) => x.couche));
+        for (const x of p) montre(couche(x.couche), x);
+        for (const [n, c] of couches) if (!vues.has(n)) c.div.style.opacity = '0';
+        regleImage(etat, p);
+        if ([...couches.values()].some((c) => c.videos.some((v) => v.classList.contains('visible')))) {
+          finAttente();
+        }
+        if (origineEtat === 'dashboard') document.getElementById('titre').textContent = titreDe(etat);
+        const enMesure = etat.son && Object.keys(etat.son).length && !etat.son.tempo_retenu;
+        indique(
+          etat.mode || (etat.in_break ? 'break' : 'drop'),
+          etat.mood,
+          enMesure ? 'mesure' : etat.bpm,
+          etat.familles,
+          etat.style_repli,
+        );
+        if (etat.mood) montreMood(etat.mood);
+        montreEcoute(etat);
+      }
+      const NOIR_TOLERE_MS = 1500;
+      let dernierBon = null,
+        noirDepuis = null;
+      function rendu(e) {
+        const visible = plan(e, idx).some((x) => x.opacite > 0.05);
+        if (visible) {
+          noirDepuis = null;
+          dernierBon = e;
+          affiche(e);
+          return;
+        }
+        noirDepuis ??= Date.now();
+        if (Date.now() - noirDepuis < NOIR_TOLERE_MS) {
+          affiche(e);
+          return;
+        }
+        lecture.noirs_evites++;
+        const fond = dernierBon ? dernierBon.couches : montage ? montage.pas(Date.now()).couches : {};
+        affiche({ ...e, couches: fond });
+      }
+      let trouVu = null;
+      let dernierVisiteur = 0,
+        dernierRejoue = 0;
+      const VISITEUR_SILENCE_MS = 3e3;
+      const REJOUE_ATTENTE_MS = 2e3;
+      let origineEtat = 'dashboard';
+      let silenceVisiteur = false;
+      function recois(e, secours = false, origine = 'dashboard') {
+        if (!e || typeof e !== 'object') return;
+        if (!suitDashboard && origine !== 'visiteur') return;
+        origineEtat = origine;
+        if (origine === 'visiteur') {
+          if (direct()) return;
+          dernierVisiteur = Date.now();
+          document.body.classList.remove('direct');
+        } else if (origine === 'rejoue') {
+          if (direct() || Date.now() - dernierVisiteur < VISITEUR_SILENCE_MS) return;
+          dernierRejoue = Date.now();
+        } else {
+          if (!secours) dernierRelais = Date.now();
+          dernierRecu = Date.now();
+          document.body.classList.add('direct');
+        }
+        document.body.classList.toggle('silence', e.silence === true);
+        if (origine === 'visiteur' && silenceVisiteur) document.body.classList.add('silence');
+        const trou = e.autopilot && e.son?.ecoute?.silence === true ? e.son.ecoute.silence_depuis : null;
+        if (trou == null) document.body.classList.remove('trou');
+        else if (trou !== trouVu) {
+          trouVu = trou;
+          document.body.classList.add('trou');
+        }
+        pulse(e.pulse);
+        voyantPaire(e);
+        rendu(e);
+        versDoc({ t: 'etat', e, origine });
+      }
+      window.afterTV = {
+        image,
+        recois,
+        recoisVisiteur: (e) => recois(e, false, 'visiteur'),
+        couches,
+        lecture,
+        versDoc,
+        releveLoops,
+        sd: (v) => {
+          if (v !== void 0) qualite.sd = !!v;
+          return qualite.sd;
+        },
+        montage: () => montage,
+        enDirect: () => direct(),
+        suitDashboard,
+        silenceVisiteur: (oui) => {
+          silenceVisiteur = !!oui;
+          if (!direct()) document.body.classList.toggle('silence', silenceVisiteur);
+        },
+      };
+      let relaisWs = null;
+      function ecoute(relais) {
+        const ws = (relaisWs = new WebSocket(relais.replace(/^http/, 'ws').replace(/\/$/, '') + '/ws'));
+        let premier = true;
+        ws.onmessage = (m) => {
+          try {
+            recois(JSON.parse(m.data), false, premier ? 'rejoue' : 'dashboard');
+          } catch {}
+          premier = false;
+        };
+        ws.onclose = () => setTimeout(() => ecoute(relais), 3e3);
+      }
+      function ecouteLocal(adresse = 'etat.json', secours = false) {
+        let enCours = false,
+          rate = 0;
+        setInterval(async () => {
+          if (enCours || (secours && relaisVivant())) return;
+          if (rate > 20 && Date.now() % 5e3 > 150) return;
+          enCours = true;
+          try {
+            const e = await (await fetch(adresse, { cache: 'no-store' })).json();
+            if (e && e.couches) {
+              rate = 0;
+              recois(e, secours);
+            }
+          } catch {
+            rate++;
+          }
+          enCours = false;
+        }, 150);
+      }
+      let dernierRelais = 0;
+      const relaisVivant = () => Date.now() - dernierRelais < 3e3;
+      setInterval(() => {
+        if (
+          direct() ||
+          !montage ||
+          Date.now() - dernierVisiteur < VISITEUR_SILENCE_MS ||
+          Date.now() - dernierRejoue < REJOUE_ATTENTE_MS
+        )
+          return;
+        document.body.classList.remove('direct');
+        document.body.classList.toggle('silence', silenceVisiteur);
+        origineEtat = 'veille';
+        affiche(montage.pas(Date.now()));
+      }, 100);
+      const HD_MONTE = 12,
+        HD_DESCEND = 9,
+        SONDE_OCTETS = 2e6,
+        SONDE_S = 45;
+      let tousLesLoops = [];
+      const qualite = {
+        forcee: q.has('hd'),
+        sd: !q.has('hd') && !!visiteur?.sd,
+        debit: null,
+        hd: false,
+        mesuree: null,
+        erreur: null,
+      };
+      function fichier(loop) {
+        if (qualite.sd && !qualite.forcee) return loop.video;
+        return loop.video_hd && !loop.hdAbsent && (qualite.forcee || qualite.hd) ? loop.video_hd : loop.video;
+      }
+      async function sondeDebit() {
+        const avecHd = tousLesLoops.filter((l2) => l2.video_hd);
+        if (!avecHd.length) return;
+        const l = avecHd[Math.floor(Math.random() * avecHd.length)];
+        try {
+          const debut = performance.now();
+          const r = await fetch(url(l.video_hd), {
+            headers: { Range: `bytes=0-${SONDE_OCTETS - 1}` },
+            cache: 'no-store',
+          });
+          const lu = (await r.arrayBuffer()).byteLength;
+          const s = (performance.now() - debut) / 1e3;
+          qualite.debit = Math.round((lu * 8) / s / 1e5) / 10;
+          qualite.hd = qualite.hd ? qualite.debit >= HD_DESCEND : qualite.debit >= HD_MONTE;
+          qualite.mesuree = Date.now();
+          qualite.erreur = null;
+        } catch (e) {
+          qualite.erreur = String(e);
+          qualite.hd = false;
+        }
+      }
+      function appliqueHd() {
+        document.getElementById('btn-hd').setAttribute('aria-pressed', String(qualite.forcee));
+        const hd = tousLesLoops.filter((l) => l.video_hd);
+        const loops = qualite.forcee && hd.length >= 4 ? hd : tousLesLoops;
+        if (montage && loops.length !== montage.loops.length) montage = new MontageSeul(loops, { mood, bpm });
+      }
+      async function demarre() {
+        const m = await (await fetch(base)).json();
+        const loops = m.loops || [];
+        tousLesLoops = loops;
+        idx = index(loops);
+        montage = new MontageSeul(loops, { mood, bpm });
+        appliqueHd();
+        sondeDebit();
+        setInterval(sondeDebit, SONDE_S * 1e3);
+        changeMood(mood);
+        const premiere = montage.pas(Date.now()).couches['1'];
+        const l1 = premiere && loops.find((l) => l.nom === premiere.nom);
+        if (l1) document.getElementById('vignette').style.backgroundImage = `url("${url(l1.vignette)}")`;
+        if (reglage('style') && suitDashboard) {
+          lisStyle();
+          setInterval(lisStyle, 2e4);
+        }
+        if (config.pilote) ecouteLocal();
+        else if (adresseRelais) {
+          ecoute(adresseRelais);
+          if (q.has('debug')) ecouteLocal('http://127.0.0.1:8765/aftertv/etat.json', true);
+        }
+      }
+      const panneau = document.getElementById('debug');
+      const boutonDebug = document.getElementById('btn-debug');
+      document.getElementById('btn-hd').onclick = () => {
+        qualite.forcee = !qualite.forcee;
+        appliqueHd();
+        if (suitDashboard && document.body.classList.contains('direct') && pilote?.readyState === 1)
+          pilote.send(JSON.stringify({ kind: 'hd_seulement', on: qualite.forcee }));
+      };
+      function basculeDebug(oui = panneau.hidden) {
+        panneau.hidden = !oui;
+        document.body.classList.toggle('debug', oui);
+        boutonDebug.setAttribute('aria-pressed', String(oui));
+        if (oui) rendDebug();
+      }
+      const pct = (x) => (x == null ? '-' : `${Math.round(Number(x) * 100)} %`);
+      const esc = (s) =>
+        String(s ?? '').replace(
+          /[&<>"']/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+        );
+      const OUTILS = [
+        ['autopilot', 'Autopilote'],
+        ['superposition', 'Superposition'],
+        ['superposition_auto', 'Superposition auto'],
+        ['chapitres_auto', 'Chapitres auto'],
+        ['rafale', 'Rafale'],
+        ['mano', 'Manette'],
+        ['pause', 'Pause'],
+        ['resolume', 'Resolume'],
+      ];
+      const REGLES = {
+        theme: 'Un thème par écran',
+        tags: 'Au moins un tag en commun',
+        paire: 'Paire de montage (V52)',
+      };
+      function paireDe(lien, plan2) {
+        const d = lien && lien.derniere;
+        if (!d || d.regle !== 'paire') return null;
+        const nomCol = (c) => {
+          const x = (plan2 || []).find((p) => String(p.loop.colonne) === String(c));
+          return x ? x.loop.nom : `colonne ${c}`;
+        };
+        const [col, val] = Object.entries(d.avec || {})[0] || [];
+        const apres = typeof val === 'string' ? val : col != null ? nomCol(col) : '?';
+        return { nom: d.nom || nomCol(d.colonne), apres };
+      }
+      let paireVue = null,
+        finPaire = null;
+      function voyantPaire(e) {
+        const d = e && e.lien && e.lien.derniere,
+          v = document.getElementById('paire');
+        if (!v || !d || d.regle !== 'paire') return;
+        const cle2 = d.t ?? JSON.stringify(d);
+        if (cle2 === paireVue) return;
+        const premier = paireVue === null;
+        paireVue = cle2;
+        if (premier && (d.t == null || Date.now() / 1e3 - d.t > 4)) return;
+        v.classList.add('bat', 'on');
+        clearTimeout(finPaire);
+        finPaire = setTimeout(() => v.classList.remove('bat', 'on'), 4e3);
+      }
+      const pastille = (nom, on) =>
+        `<span class="p ${on ? 'on' : 'off'}" title="${esc(nom)} : ${on ? 'actif' : 'éteint'}">${on ? '&#9679;' : '&#9675;'} ${esc(nom)}</span>`;
+      const tagHtml = (t, commun) => `<span class="t${commun ? ' commun' : ''}">${esc(t)}</span>`;
+      const tagsListe = (ts, communs) =>
+        ts.length
+          ? ts.map((t) => tagHtml(t, communs.has(t))).join('')
+          : `<span class="vide">aucun tag</span>`;
+      const NOMS_AUTO = {
+        suspension: 'Suspension',
+        hyper: 'Hyper',
+        ecrans: 'Écrans',
+        rafale: 'Rafale',
+        declencheur: 'Kick / hi-hat',
+        respiration: 'Respiration',
+        reperes: 'Repères',
+        masque: 'Masque',
+        dosage: 'Dosage',
+        strobe: 'Strobe',
+        plans: 'Plans longs',
+      };
+      function gestesAuto(o) {
+        const auto = o && o.auto;
+        if (!auto) return '';
+        const compte = auto.compteurs || {};
+        const boutons = Object.entries(auto.actifs || {})
+          .map(([k, on]) => pastille((NOMS_AUTO[k] || k) + ' auto ×' + (compte[k] || 0), !!on))
+          .join('');
+        const dit = (g) =>
+          g.action === 'jouer'
+            ? 'joué'
+            : g.action === 'rendre'
+              ? 'retour au ' + g.valeur
+              : g.action === 'saut'
+                ? 'repère suivant'
+                : g.valeur === true
+                  ? 'allumé'
+                  : g.valeur === false
+                    ? 'éteint'
+                    : g.valeur;
+        const lignes = (auto.journal || [])
+          .slice(-6)
+          .reverse()
+          .map(
+            (g) =>
+              `<div class="meta">mesure ${esc(g.mesure ?? '-')} · <b>${esc(NOMS_AUTO[g.outil] || g.outil)}</b> ${esc(dit(g))} : ${esc(g.pourquoi)}</div>`,
+          )
+          .join('');
+        return (
+          `<div class="pastilles" style="margin-top:6px">${boutons}</div>` +
+          (lignes ||
+            `<div class="discret" style="margin-top:6px">L'autopilot n'a encore touché à aucun outil.</div>`)
+        );
+      }
+      let dernierHtml = '';
+      const LIBELLES = {
+        direct: '● Dashboard en direct',
+        veille: '○ Veille',
+        ilYa: 'dernière info du dashboard il y a {s} s',
+        aucunEtat: 'le dashboard ne répond pas',
+        attenteEtat: 'La console attend les premières infos du dashboard.',
+        chaine: "Entendu → déduit → effet à l'écran → règle de Rien",
+        expert: 'Expert',
+        expertAide: 'Toutes les valeurs brutes, sans traduction',
+        image: 'Image auto',
+        imageAide:
+          'Lumière, contraste, saturation et teinte réglés en direct (codex V93 à V96). Éteint : les loops telles quelles',
+        doc: 'How it works',
+        docAide:
+          'La documentation interactive en anglais (pour un talk), dans un autre onglet : chaque étape avec ce qui se passe en ce moment',
+        etapeEntendu: 'Entendu',
+        etapeDeduit: 'Déduit → effet sur le montage',
+        etapeRegles: "Les règles de Rien",
+        essentiel: 'Ce qui joue',
+        expertTitre: 'Expert : toutes les valeurs brutes',
+        kick: 'Kick',
+        pasKick: 'Kick',
+        pasCaisse: 'Caisse',
+        pasHat: 'Charleston',
+        grilleAide:
+          'La batterie de la dernière mesure, découpée en 16 pas. Le curseur avance sur les 4 temps.',
+        spectreAide:
+          "Le son qui entre, du grave à l'aigu (40 Hz à 11 kHz). Plus la colonne monte, plus la bande sonne fort.",
+        grave: 'grave',
+        medium: 'médium',
+        aigu: 'aigu',
+        spectreAbsent: "Le spectre s'affichera au prochain temps entendu.",
+        sonAbsentDirect: "Le dashboard n'envoie pas encore le son : il faut le relancer.",
+        sonAbsentVeille: 'Veille : tempo fixe, aucun son écouté.',
+        infos: '{bpm} BPM · niveau {db} dB · {source}',
+        sourceOrdi: "son de l'ordinateur",
+        sourceMicro: 'micro {nom}',
+        sourceAucune: 'aucune source',
+        pasDeSon: 'Pas de son : écran noir « After TV »',
+        silenceNet: "Silence net depuis le temps {t} : l'image passe au noir",
+        ecouteAbsente: "L'écoute fine n'arrive pas encore : il faut relancer le dashboard.",
+        colDeduit: 'Il déduit',
+        colEffet: "Ce qui change à l'écran",
+        reactionAucune:
+          "Aucune réaction pour l'instant. En autopilot, le montage réagit au plus une fois toutes les 8 mesures.",
+        reactionQuand: 'mesure {m} · il y a {s} s',
+        reactionMesure: 'mesure {m}',
+        reactionChanger: 'Nouvelle loop dominante',
+        reactionReprendre: "Retour aux loops d'avant",
+        reactionPreparer: 'Loops du drop prêtes',
+        famRythme: 'Rythme',
+        famSilence: 'Silence',
+        famPartie: 'Partie',
+        famRetour: 'Retour',
+        famDrop: 'Drop',
+        famRiff: 'Riff',
+        famMorceau: 'Morceau',
+        famMatiere: 'Matière',
+        famVoix: 'Voix et instruments',
+        famNotes: 'Notes',
+        famGroove: 'Groove',
+        famMontee: 'Montée',
+        famSet: 'Set',
+        rythmeChange: 'passé de {de} à {vers} (mesure {m})',
+        rythmeAbsent: 'pas encore lu',
+        effRythme: "Nouvelle loop dominante à l'écran",
+        silenceOui: 'silence net depuis le temps {t}',
+        silenceRetour: 'pas de silence (le dernier a fini au temps {t})',
+        silenceNon: 'pas de silence net',
+        effSilence: "Écran noir, le premier kick ramène l'image",
+        partieMontee: 'montée',
+        partieConf: 'sûre à {p} %',
+        partiePhrase: 'mesure {k}/8 de la phrase',
+        partieAbsente: 'pas encore lue',
+        effPartie: "Règle le nombre de loops à l'écran en même temps",
+        effPartieMontee: "Loops plus rapides (hyper ou rafale) jusqu'au drop",
+        retourOui: 'la partie revient, comme à la mesure {m}',
+        retourNon: 'aucune partie ne revient',
+        effRetour: 'Les loops jouées la première fois reviennent',
+        dropOui: 'drop dans {n} mesure{s}',
+        dropNon: 'pas de drop annoncé',
+        effDrop: "Les loops du drop sont prêtes avant qu'il tombe",
+        riffOui: 'le riff de la mesure {m} revient',
+        riffNon: 'aucun riff ne revient',
+        effRiff: 'Les loops jouées à ce moment-là reviennent',
+        morceauNon: 'aucun morceau reconnu',
+        effMorceau: 'Si le morceau revient, ses loops de la dernière fois reviennent avec lui',
+        brillance: 'brillance {v}',
+        grain: 'grain {v}',
+        espace: 'espace {v}',
+        dynamique: 'son {v}',
+        tonalite: 'tonalité {t}',
+        matiereVide: 'pas encore assez entendu',
+        voixVide: 'ni voix ni instrument entendu',
+        effMatiere: 'Loops favorisées :',
+        effMatiereRien: 'Aucune loop favorisée',
+        groupeMesure: "Mesuré, sans effet sur le montage pour l'instant",
+        notesAccord: 'accord {a}',
+        grooveRien: 'rien de marqué',
+        groovePompe: 'pompe',
+        grooveFill: 'fill',
+        grooveDemi: 'demi-temps',
+        grooveCrash: 'crash',
+        monteeFiltre: 'filtre {v}',
+        monteeBruit: 'bruit {v}',
+        monteeHauteur: 'hauteur {v}',
+        setArc: 'soirée {a}',
+        setCourt: 'soirée : pas encore 10 min',
+        setRefrain: 'refrain',
+        setLongueurs: 'parties : {l}',
+        mesures: '{n} mes.',
+        reglesDorment: 'Règles au repos en ce moment',
+        pV45: 'source : {source}',
+        pV51: 'style entendu : {style}',
+        pV52: '{nom} arrive après {apres} : une de tes paires',
+        pV59: 'les coupes tombent sur {sur}',
+        pV59kick: 'le kick',
+        pV59hat: 'le charleston',
+        pV68: 'loop dominante : {nom}',
+        pV68change: 'loop dominante : {nom}, elle vient de changer',
+        pV71rythme: 'le rythme vient de passer à {vers}',
+        pV71silence: 'silence net : écran noir',
+        pV72: 'break en cours : la loop reste',
+        pV74: 'pas de son : écran noir',
+        pV82: 'suspension en cours',
+        colonne: 'colonne {n}',
+        dominante: 'loop dominante : {nom}',
+        ecranVide: "Rien à l'écran.",
+        couchesCachees: '+ {n} couche{s} à 0 %',
+        brutEcoute: 'Écoute fine (son.ecoute)',
+        brutSon: 'Son (son)',
+      };
+      const REGLES_OSCAR = [
+        {
+          n: 'V45',
+          titre: "Le son de l'ordinateur par défaut, le micro sinon",
+          regle:
+            "Le dashboard écoute d'abord le son de l'ordinateur ; si rien n'en sort pendant 8 s, il propose de passer au micro.",
+          date: '2026-11-11',
+        },
+        {
+          n: 'V51',
+          titre: 'Le style se lit aussi au son',
+          regle:
+            "Quand le morceau reconnu ne dit ni house ni techno, le style s'estime au son lui-même (tempo, percussions, grave), après trois verdicts identiques d'affilée.",
+          date: '2026-11-12',
+        },
+        {
+          n: 'V52',
+          titre: 'Les paires de montage reviennent de temps en temps',
+          regle:
+            "Quand une loop d'une paire montée par Rien passe, sa partenaire suit parfois, de plus en plus rarement à mesure que le live dure.",
+          date: '2026-11-12',
+        },
+        {
+          n: 'V59',
+          titre: 'Kick ou hi-hat en autopilot',
+          regle:
+            'Les coupes suivent le hi-hat quand le charleston est franc, 2 mesures au plus, puis reviennent au kick pour 12 mesures au moins.',
+          date: '2026-11-12',
+        },
+        {
+          n: 'V68',
+          titre: 'Chaque séquence a une loop dominante',
+          regle:
+            "Chaque séquence (drop, break, partie du morceau) est portée par une loop dominante qui revient ; les autres passent autour d'elle.",
+          date: '2026-11-12',
+        },
+        {
+          n: 'V71',
+          titre: "Le buffer d'écoute réagit aux changements brusques du son",
+          regle:
+            'Une rupture nette du son (chute, montée, changement de timbre) fait réagir le montage tout de suite, sans attendre la grille.',
+          date: '2026-11-12',
+        },
+        {
+          n: 'V72',
+          titre: 'Un long break garde sa loop',
+          regle: "Un break qui s'installe garde sa loop à l'écran longtemps, sans la remplacer.",
+          date: '2026-11-12',
+        },
+        {
+          n: 'V74',
+          titre: 'Pas de son : écran noir avec « After TV »',
+          regle:
+            'Après 4 s sans aucun son, écran noir avec « After TV » au centre ; les images reviennent avec le son.',
+          date: '2026-11-12',
+        },
+        {
+          n: 'V82',
+          titre: 'La suspension revient plus souvent, et peut ne durer que 2 temps',
+          regle:
+            'Un kick qui manque en plein drop déclenche aussitôt une suspension, de 2 temps au moins, qui finit quand le kick revient.',
+          date: '2026-11-14',
+        },
+      ];
+      const RECENT_S = 20;
+      const SPECTRE_DB = 36;
+      const SPECTRE_FENETRE = 40;
+      const SPECTRE_CARRES = 8;
+      const CLE_EXPERT = 'aftertv.debug.expert';
+      const ACCENTS = { aere: 'aéré', reverbere: 'réverbéré', ecrase: 'écrasé' };
+      const VOIX_MOTS = { chant: 'voix chantée', parole: 'voix parlée' };
+      const lib = (cle2, v = {}) =>
+        String(LIBELLES[cle2] ?? cle2).replace(/\{(\w+)\}/g, (_, k) => String(v[k] ?? ''));
+      const libH = (cle2, v = {}) =>
+        esc(LIBELLES[cle2] ?? cle2).replace(/\{(\w+)\}/g, (_, k) => String(v[k] ?? ''));
+      const B = (x) => `<b>${esc(x)}</b>`;
+      const citation = (t) => `« ${esc(t)} »`;
+      const modeDe = (e) => e.mode || (e.in_break ? 'break' : 'drop');
+      const nomSource = (src) =>
+        src === 'loopback'
+          ? lib('sourceOrdi')
+          : src == null
+            ? lib('sourceAucune')
+            : src === 'micro'
+              ? 'micro'
+              : String(src).startsWith('radio:')
+                ? 'radio ' + String(src).slice(6)
+                : lib('sourceMicro', { nom: src });
+      const nomPartie = (p) => (p === 'montee' ? lib('partieMontee') : p);
+      const nomTag = (k) => {
+        const [fam, champ] = String(k).split('.');
+        return champ && champ.length > 3 ? champ : fam;
+      };
+      var vivant = null;
+      function construisConsole() {
+        if (vivant) return vivant;
+        let expert = false;
+        try {
+          expert = localStorage.getItem(CLE_EXPERT) === '1';
+        } catch {}
+        const cases = Array.from(
+          { length: 16 },
+          (_, i) => `<span class="c${i && i % 4 === 0 ? ' debut' : ''}"></span>`,
+        ).join('');
+        const rangee = (nom) => `<span class="lab">${esc(nom)}</span>${cases}`;
+        panneau.lang = 'fr';
+        panneau.innerHTML =
+          `<div class="dbg-tete"><div class="dbg-qui"><span class="source"></span><span class="dbg-age discret"></span><div class="dbg-chaine">${esc(LIBELLES.chaine)}</div></div><a class="dbg-bouton-expert dbg-doc" href="how-it-works.html" target="_blank" rel="noopener" lang="en" title="${esc(LIBELLES.docAide)}">${esc(LIBELLES.doc)}</a><button type="button" class="dbg-bouton-expert dbg-bouton-image" aria-pressed="${image.actif}" title="${esc(LIBELLES.imageAide)}">${esc(LIBELLES.image)}</button><button type="button" class="dbg-bouton-expert" aria-pressed="${expert}" title="${esc(LIBELLES.expertAide)}">${esc(LIBELLES.expert)}</button></div><section class="dbg-entendu"><h3><span class="etape">1</span>${esc(LIBELLES.etapeEntendu)}</h3><div class="dbg-titre" role="status" hidden></div><div class="dbg-silence" role="status" hidden></div><div class="vide dbg-attente" hidden></div><div class="dbg-son"><div class="dbg-pouls"><span class="dbg-kick" aria-hidden="true">${esc(LIBELLES.kick)}</span><span class="dbg-infos"></span></div><div class="dbg-grille" role="img" aria-label="${esc(LIBELLES.grilleAide)}" title="${esc(LIBELLES.grilleAide)}"><span class="lab"></span>` +
+          [1, 2, 3, 4].map((n) => `<span class="tn${n > 1 ? ' debut' : ''}">${n}</span>`).join('') +
+          rangee(LIBELLES.pasKick) +
+          rangee(LIBELLES.pasCaisse) +
+          rangee(LIBELLES.pasHat) +
+          `</div><div class="dbg-spectre-zone"><div class="dbg-spectre" role="img" aria-label="${esc(LIBELLES.spectreAide)}" title="${esc(LIBELLES.spectreAide)}">` +
+          `<span class="b"><i></i></span>`.repeat(24) +
+          `</div><div class="dbg-bornes" aria-hidden="true"><span style="grid-column:1/3">${esc(LIBELLES.grave)}</span><span class="m" style="grid-column:3/12">${esc(LIBELLES.medium)}</span><span class="a" style="grid-column:12/25">${esc(LIBELLES.aigu)}</span></div></div><div class="discret dbg-spectre-absent" hidden>${esc(LIBELLES.spectreAbsent)}</div></div></section><div class="dbg-corps"></div>`;
+        const $ = (s) => panneau.querySelector(s);
+        const c = [...panneau.querySelectorAll('.dbg-grille .c')];
+        vivant = {
+          source: $('.dbg-tete .source'),
+          age: $('.dbg-age'),
+          bouton: $('button.dbg-bouton-expert:not(.dbg-bouton-image)'),
+          entendu: $('.dbg-entendu'),
+          titreRecherche: $('.dbg-titre'),
+          silence: $('.dbg-silence'),
+          attente: $('.dbg-attente'),
+          son: $('.dbg-son'),
+          kick: $('.dbg-kick'),
+          infos: $('.dbg-infos'),
+          tn: [...panneau.querySelectorAll('.dbg-grille .tn')],
+          cols: Array.from({ length: 16 }, (_, i) => [c[i], c[16 + i], c[32 + i]]),
+          zoneSpectre: $('.dbg-spectre-zone'),
+          spectreAbsent: $('.dbg-spectre-absent'),
+          bandes: [...panneau.querySelectorAll('.dbg-spectre .b i')],
+          corps: $('.dbg-corps'),
+          expert,
+          maxs: [],
+          tete: null,
+          temps: 0,
+          dernierTemps: 0,
+          pas: [],
+          finKick: 0,
+          etatVu: null,
+        };
+        const boutonImage = $('.dbg-bouton-image');
+        boutonImage.onclick = () => {
+          image.actif = !image.actif;
+          boutonImage.setAttribute('aria-pressed', String(image.actif));
+          try {
+            localStorage.setItem(CLE_IMAGE, image.actif ? '1' : '0');
+          } catch {}
+          poseFiltres();
+        };
+        vivant.bouton.onclick = () => {
+          vivant.expert = !vivant.expert;
+          vivant.bouton.setAttribute('aria-pressed', String(vivant.expert));
+          try {
+            localStorage.setItem(CLE_EXPERT, vivant.expert ? '1' : '0');
+          } catch {}
+          rendDebug();
+        };
+        return vivant;
+      }
+      function placeTete(i) {
+        const v = vivant;
+        if (!v || v.tete === i || !v.cols[i]) return;
+        if (v.tete != null) v.cols[v.tete].forEach((c) => c.classList.remove('tete'));
+        v.tete = i;
+        v.cols[i].forEach((c) => c.classList.add('tete'));
+      }
+      function placeTemps(t) {
+        vivant.tn.forEach((n, k) => n.classList.toggle('on', k === t - 1));
+      }
+      function tempsDuBattement() {
+        const e = dernierEtat,
+          s = e && e.son,
+          bpmE = Number(e && e.bpm) || 0;
+        const retard = kicksDirects ? 0 : Number.isFinite(pulseRetard) ? pulseRetard + PULSE_MARGE_S : null;
+        if (
+          s &&
+          Number.isInteger(s.temps) &&
+          s.temps >= 1 &&
+          s.temps <= 4 &&
+          bpmE > 0 &&
+          Number.isFinite(e.t) &&
+          retard != null
+        ) {
+          const n = Math.ceil(((Date.now() / 1e3 - retard - e.t) * bpmE) / 60 - 0.15);
+          return ((((s.temps - 1 + n) % 4) + 4) % 4) + 1;
+        }
+        return (vivant.temps % 4) + 1;
+      }
+      function consoleBat(id) {
+        const v = vivant;
+        if (!v || panneau.hidden) return;
+        if (id === 'kick') {
+          v.kick.classList.add('bat');
+          clearTimeout(v.finKick);
+          v.finKick = setTimeout(() => v.kick.classList.remove('bat'), 90);
+          return;
+        }
+        if (id !== 'bpm') return;
+        const t = tempsDuBattement();
+        v.temps = t;
+        v.dernierTemps = Date.now();
+        placeTemps(t);
+        placeTete((t - 1) * 4);
+        v.pas.forEach(clearTimeout);
+        const bpmE = Number(dernierEtat && dernierEtat.bpm) || 0;
+        const pas = bpmE > 0 ? 6e4 / bpmE / 4 : 0;
+        v.pas = pas ? [1, 2, 3].map((k) => setTimeout(() => placeTete((t - 1) * 4 + k), pas * k)) : [];
+      }
+      function majTete() {
+        const v = vivant,
+          enDir = direct();
+        const session = !enDir && Date.now() - dernierVisiteur < VISITEUR_SILENCE_MS;
+        const src = enDir ? LIBELLES.direct : session ? '● Session du visiteur' : LIBELLES.veille;
+        if (v.source.textContent !== src) {
+          v.source.textContent = src;
+          v.source.className = 'source ' + (enDir || session ? 'direct' : 'veille');
+        }
+        const age = session
+          ? 'son écouté dans ce navigateur'
+          : dernierRecu
+            ? lib('ilYa', { s: ((Date.now() - dernierRecu) / 1e3).toFixed(1) })
+            : lib('aucunEtat');
+        if (v.age.textContent !== age) v.age.textContent = age;
+      }
+      const STATUT_TITRE = {
+        attente: 'pas encore essayé',
+        cherche: 'cherche…',
+        trouve: 'trouvé',
+        rate: 'pas trouvé',
+        plafond: 'plafond atteint',
+        erreur: 'erreur',
+        repos: 'déjà essayé sur ce morceau',
+        inutile: 'pas besoin',
+      };
+      function htmlRechercheTitre(e) {
+        const rt = e.recherche_titre,
+          morceau = (m) =>
+            m && (m.artiste || m.titre)
+              ? `<b>${esc([m.artiste, m.titre].filter(Boolean).join(' — '))}</b>`
+              : '';
+        if (rt && rt.radio)
+          return `Titre : ${morceau(rt.morceau) || 'en attente'} <span class="discret">· donné par la radio ${esc(rt.radio)}</span>`;
+        if (!rt)
+          return e.titre
+            ? `Titre : ${morceau(e)} <span class="discret">· reconnu par le dashboard</span>`
+            : '';
+        if (!rt.actif) return `Titre : <span class="discret">recherche arrêtée</span>`;
+        const quand = (t) => (t ? ` (il y a ${Math.max(0, Math.round((Date.now() - t) / 1e3))} s)` : '');
+        const f = (nom, x, plus = '') =>
+          `<span class="four ${esc(x.statut)}">${nom} : ${esc(STATUT_TITRE[x.statut] || x.statut)}` +
+          (x.essais ? ` · ${x.essais} essai${x.essais > 1 ? 's' : ''}` : '') +
+          (x.statut !== 'cherche' ? quand(x.a) : '') +
+          plus +
+          `</span>`;
+        const compte = Number.isFinite(rt.audd.aujourdhui)
+          ? ` · site ${rt.audd.aujourdhui}/${rt.audd.par_jour ?? '?'} aujourd'hui`
+          : '';
+        const prochain =
+          rt.prochain && rt.shazam.statut !== 'cherche' && rt.audd.statut !== 'cherche'
+            ? ` · prochain essai dans ${Math.max(0, Math.round((rt.prochain - Date.now()) / 1e3))} s`
+            : '';
+        const tete = rt.morceau
+          ? `Titre : ${morceau(rt.morceau)} <span class="discret">· par ${rt.morceau.source === 'audd' ? 'AudD' : 'Shazam'}</span>`
+          : rt.shazam.statut === 'cherche' || rt.audd.statut === 'cherche'
+            ? 'Titre : <b>recherche en cours…</b>'
+            : rt.silence
+              ? 'Titre : <span class="discret">en silence, rien à chercher</span>'
+              : 'Titre : <span class="discret">pas encore trouvé</span>';
+        return (
+          `${tete}<div class="dbg-fours">${f('Shazam', rt.shazam)}${f('AudD (secours)', rt.audd, compte)}</div>` +
+          (prochain ? `<div class="discret">${prochain.slice(3)}</div>` : '')
+        );
+      }
+      function majVivant(e) {
+        const v = vivant,
+          s = e.son || {},
+          f = s.ecoute || null,
+          aSon = Object.keys(s).length > 0;
+        const rt = htmlRechercheTitre(e);
+        if (v.titreRecherche.dataset.html !== rt) {
+          v.titreRecherche.dataset.html = rt;
+          v.titreRecherche.innerHTML = rt;
+        }
+        v.titreRecherche.hidden = !rt;
+        const sil =
+          e.silence === true
+            ? lib('pasDeSon')
+            : f && f.silence
+              ? lib('silenceNet', { t: f.silence_depuis ?? '?' })
+              : '';
+        if (v.silence.textContent !== sil) v.silence.textContent = sil;
+        v.silence.hidden = !sil;
+        v.entendu.classList.toggle('muet', !!sil);
+        v.son.hidden = !aSon;
+        v.attente.hidden = aSon;
+        if (!aSon) {
+          v.attente.textContent = direct() ? LIBELLES.sonAbsentDirect : LIBELLES.sonAbsentVeille;
+          return;
+        }
+        const db = Number(s.niveau_db);
+        const infos = lib('infos', {
+          bpm: e.bpm ? Math.round(e.bpm) : '—',
+          db: Number.isFinite(db) ? db.toFixed(1) : '—',
+          source: nomSource(s.source),
+        });
+        if (v.infos.textContent !== infos) v.infos.textContent = infos;
+        if (e === v.etatVu) return;
+        v.etatVu = e;
+        const lignes = [f && f.pas_kick, f && f.pas_caisse, f && f.pas_hat];
+        for (let i = 0; i < 16; i++)
+          for (let r = 0; r < 3; r++)
+            v.cols[i][r].classList.toggle('x', typeof lignes[r] === 'string' && lignes[r][i] === 'x');
+        if (Date.now() - v.dernierTemps > 2500 && Number.isInteger(s.temps) && s.temps >= 1 && s.temps <= 4) {
+          v.temps = s.temps;
+          placeTemps(s.temps);
+          placeTete((s.temps - 1) * 4);
+        }
+        const sp = f && Array.isArray(f.spectre) && f.spectre.length ? f.spectre.map(Number) : null;
+        const haut = sp ? Math.max(...sp.filter(Number.isFinite)) : -Infinity;
+        v.zoneSpectre.hidden = !Number.isFinite(haut);
+        v.spectreAbsent.hidden = Number.isFinite(haut);
+        if (!Number.isFinite(haut)) return;
+        v.maxs.push(haut);
+        if (v.maxs.length > SPECTRE_FENETRE) v.maxs.shift();
+        const bas = Math.max(...v.maxs) - SPECTRE_DB;
+        v.bandes.forEach((b, i) => {
+          const d = sp[i];
+          const h = Number.isFinite(d) ? Math.max(0, Math.min(1, (d - bas) / SPECTRE_DB)) : 0;
+          b.style.clipPath = `inset(${(1 - Math.ceil(h * SPECTRE_CARRES) / SPECTRE_CARRES) * 100}% 0 0 0)`;
+          b.parentElement.title = Number.isFinite(d) ? `${d} dB` : '';
+        });
+      }
+      function contexteEcoute(e) {
+        const s = e.son || {},
+          f = s.ecoute || {};
+        const journal = ((e.outils && e.outils.auto && e.outils.auto.journal) || []).filter(
+          (g2) => g2.outil === 'ecoute',
+        );
+        const g = journal[journal.length - 1] || null;
+        const maintenantServeur =
+          Number.isFinite(e.t) && dernierRecu ? e.t + (Date.now() - dernierRecu) / 1e3 : null;
+        const age =
+          g && Number.isFinite(g.t) && maintenantServeur != null
+            ? Math.max(0, maintenantServeur - g.t)
+            : null;
+        const recente = (action, motif) =>
+          !!g &&
+          g.action === action &&
+          age != null &&
+          age < RECENT_S &&
+          (!motif || motif.test(String(g.pourquoi || '')));
+        const ch = f.motif_change;
+        const chRecent =
+          !!ch &&
+          ((Number.isInteger(s.mesure) && Number.isFinite(ch.mesure) && s.mesure - ch.mesure <= 4) ||
+            recente('changer'));
+        return { s, f, g, age, recente, chRecent };
+      }
+      function nomDominante(e, cx) {
+        const col =
+          e.outils && e.outils.dominante != null
+            ? e.outils.dominante
+            : cx && cx.g && cx.g.action === 'changer'
+              ? cx.g.valeur
+              : null;
+        if (col == null) return '?';
+        const c = Object.values(e.couches || {}).find((x) => x && x.col === col);
+        return c && c.nom ? c.nom : lib('colonne', { n: col });
+      }
+      function blocDeduit(e, cx) {
+        const { s, f } = cx;
+        const titre = `<h3><span class="etape">2</span>${esc(LIBELLES.etapeDeduit)}</h3>`;
+        if (!s.ecoute)
+          return `<section>${titre}<div class="vide">${esc(LIBELLES.ecouteAbsente)}</div></section>`;
+        const g = cx.g;
+        const action =
+          g &&
+          { changer: 'reactionChanger', reprendre: 'reactionReprendre', preparer: 'reactionPreparer' }[
+            g.action
+          ];
+        const reaction = g
+          ? `<div class="dbg-reaction${cx.age != null && cx.age < RECENT_S ? ' fraiche' : ''}"><div class="quoi">${esc(action ? LIBELLES[action] : g.action)}</div><div>${esc(g.pourquoi)}</div><div class="meta">${cx.age != null ? libH('reactionQuand', { m: esc(g.mesure ?? '-'), s: esc(Math.round(cx.age)) }) : libH('reactionMesure', { m: esc(g.mesure ?? '-') })}</div></div>`
+          : `<div class="dbg-reaction"><div class="vide">${esc(LIBELLES.reactionAucune)}</div></div>`;
+        const ligne = (fam, dit, effet, on, absent, plein = '') =>
+          `<div class="dbg-ded${on ? ' on' : ''}${absent ? ' absent' : ''}"><span class="fam">${esc(LIBELLES[fam])}</span><span class="dit">${dit}</span><span class="effet">${effet}</span>${plein}</div>`;
+        const lignes = [];
+        const ch = f.motif_change;
+        lignes.push(
+          ligne(
+            'famRythme',
+            f.motif
+              ? B(f.motif) +
+                  (ch
+                    ? ' · ' + libH('rythmeChange', { de: esc(ch.de), vers: B(ch.vers), m: esc(ch.mesure) })
+                    : '')
+              : esc(LIBELLES.rythmeAbsent),
+            esc(LIBELLES.effRythme),
+            cx.chRecent,
+            !f.motif,
+          ),
+        );
+        lignes.push(
+          ligne(
+            'famSilence',
+            f.silence
+              ? libH('silenceOui', { t: B(f.silence_depuis ?? '?') })
+              : f.silence_retour != null
+                ? libH('silenceRetour', { t: esc(f.silence_retour) })
+                : esc(LIBELLES.silenceNon),
+            esc(LIBELLES.effSilence),
+            !!f.silence,
+            !f.silence,
+          ),
+        );
+        const partie = s.partie;
+        const conf =
+          partie && s.partie_confiance != null
+            ? libH('partieConf', { p: esc(Math.round(s.partie_confiance * 100)) })
+            : '';
+        const phrase = Number.isInteger(s.partie_place_phrase)
+          ? libH('partiePhrase', { k: esc(s.partie_place_phrase + 1) })
+          : '';
+        lignes.push(
+          ligne(
+            'famPartie',
+            partie
+              ? [B(nomPartie(partie)), conf, phrase].filter(Boolean).join(' · ')
+              : esc(LIBELLES.partieAbsente),
+            esc(partie === 'montee' ? LIBELLES.effPartieMontee : LIBELLES.effPartie),
+            ['montee', 'refrain', 'couplet'].includes(partie),
+            !partie,
+          ),
+        );
+        const rv = s.partie_revient;
+        lignes.push(
+          ligne(
+            'famRetour',
+            rv ? libH('retourOui', { m: B(rv.comme) }) : esc(LIBELLES.retourNon),
+            esc(LIBELLES.effRetour),
+            !!rv || cx.recente('reprendre', /partie revient/),
+            !rv,
+          ),
+        );
+        const dd = s.partie_drop_dans;
+        lignes.push(
+          ligne(
+            'famDrop',
+            Number.isInteger(dd)
+              ? libH('dropOui', { n: B(dd), s: dd > 1 ? 's' : '' }) +
+                  (s.partie_montee_signe ? ' · ' + esc(s.partie_montee_signe) : '')
+              : esc(LIBELLES.dropNon),
+            esc(LIBELLES.effDrop),
+            (Number.isInteger(dd) && dd <= 1 && modeDe(e) !== 'drop') || cx.recente('preparer'),
+            !Number.isInteger(dd),
+          ),
+        );
+        const rf = f.riff_revient;
+        lignes.push(
+          ligne(
+            'famRiff',
+            rf != null ? libH('riffOui', { m: B(rf) }) : esc(LIBELLES.riffNon),
+            esc(LIBELLES.effRiff),
+            rf != null || cx.recente('reprendre', /riff/),
+            rf == null,
+          ),
+        );
+        const titreRevient =
+          !!e.titre && cx.recente('reprendre') && String(g.pourquoi || '').startsWith(e.titre);
+        lignes.push(
+          ligne(
+            'famMorceau',
+            e.titre ? B(e.titre) + (e.artiste ? ' · ' + esc(e.artiste) : '') : esc(LIBELLES.morceauNon),
+            esc(LIBELLES.effMorceau),
+            titreRevient,
+            !e.titre,
+          ),
+        );
+        const mots = [
+          ['brillance_mot', 'brillance'],
+          ['grain_mot', 'grain'],
+          ['espace_mot', 'espace'],
+          ['dynamique_mot', 'dynamique'],
+        ]
+          .filter(([k]) => f[k])
+          .map(([k, cle2]) => libH(cle2, { v: B(ACCENTS[f[k]] || f[k]) }));
+        if (f.tonalite) mots.push(libH('tonalite', { t: B(f.tonalite) }));
+        const tp = Object.entries(f.tags_matiere || f.tags_proposes || {});
+        const puces = tp
+          .map(([k, v]) =>
+            tagHtml(
+              nomTag(k) + ' ' + (v.dans ? v.dans.join(' / ') : v.min != null ? '≥ ' + v.min : '≤ ' + v.max),
+              false,
+            ),
+          )
+          .join('');
+        lignes.push(
+          ligne(
+            'famMatiere',
+            mots.length ? mots.join(' · ') : esc(LIBELLES.matiereVide),
+            esc(tp.length ? LIBELLES.effMatiere : LIBELLES.effMatiereRien),
+            tp.length > 0 && !!e.autopilot,
+            !mots.length,
+            tp.length ? `<div class="tags plein">${puces}</div>` : '',
+          ),
+        );
+        const vx = [
+          f.voix ? B(VOIX_MOTS[f.voix] || f.voix) : '',
+          (f.instruments || []).map(B).join(', '),
+        ].filter(Boolean);
+        const tv = Object.entries(f.tags_voix || {});
+        const pucesV = tv
+          .map(([k, v]) =>
+            tagHtml(
+              nomTag(k) + ' ' + (v.dans ? v.dans.join(' / ') : v.min != null ? '≥ ' + v.min : '≤ ' + v.max),
+              false,
+            ),
+          )
+          .join('');
+        lignes.push(
+          ligne(
+            'famVoix',
+            vx.length ? vx.join(' · ') : esc(LIBELLES.voixVide),
+            esc(tv.length ? LIBELLES.effMatiere : LIBELLES.effMatiereRien),
+            tv.length > 0 && !!e.autopilot,
+            !vx.length,
+            tv.length ? `<div class="tags plein">${pucesV}</div>` : '',
+          ),
+        );
+        const mesure = (fam, dit) =>
+          dit
+            ? `<div class="dbg-ded mesure"><span class="fam">${esc(LIBELLES[fam])}</span><span class="dit">${dit}</span></div>`
+            : '';
+        const notes = [
+          f.accord ? libH('notesAccord', { a: B(f.accord) }) : '',
+          f.suite ? `<span class="dbg-mono">${esc(f.suite)}</span>` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        const groove = [
+          f.swing ? B(f.swing) + (f.swing_pct != null ? ` (${esc(f.swing_pct)} %)` : '') : '',
+          f.pompage ? B(LIBELLES.groovePompe) : '',
+          f.fill ? B(LIBELLES.grooveFill) : '',
+          f.demi_temps ? B(LIBELLES.grooveDemi) : '',
+          f.crash ? B(LIBELLES.grooveCrash) : '',
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        const bouge = (k, cle2) => (f[k] && f[k] !== 'stable' ? libH(cle2, { v: esc(f[k]) }) : '');
+        const montee =
+          f.montee != null
+            ? [
+                B(Math.round(f.montee * 100) + ' %'),
+                bouge('filtre', 'monteeFiltre'),
+                bouge('bruit', 'monteeBruit'),
+                bouge('hauteur', 'monteeHauteur'),
+              ]
+                .filter(Boolean)
+                .join(' · ')
+            : '';
+        const longueurs =
+          f.longueurs && Object.keys(f.longueurs).length
+            ? libH('setLongueurs', {
+                l: Object.entries(f.longueurs)
+                  .map(([k, n]) => esc(k) + ' ' + libH('mesures', { n: esc(n) }))
+                  .join(', '),
+              })
+            : '';
+        const set = [
+          f.arc ? libH('setArc', { a: B(f.arc) }) : esc(LIBELLES.setCourt),
+          f.refrain ? B(LIBELLES.setRefrain) : '',
+          longueurs,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        return (
+          `<section>${titre}${reaction}<div class="dbg-entetes" aria-hidden="true"><span></span><span>${esc(LIBELLES.colDeduit)}</span><span>${esc(LIBELLES.colEffet)}</span></div>` +
+          lignes.join('') +
+          `<div class="dbg-sous">${esc(LIBELLES.groupeMesure)}</div>` +
+          mesure('famNotes', notes) +
+          mesure('famGroove', groove || esc(LIBELLES.grooveRien)) +
+          mesure('famMontee', montee) +
+          mesure('famSet', set) +
+          `</section>`
+        );
+      }
+      function reglesQuiJouent(e, cx) {
+        const { s, f } = cx,
+          o = e.outils || {},
+          mu = e.musique || {},
+          mode = modeDe(e),
+          r = {};
+        r.V45 = lib('pV45', { source: nomSource(s.source) });
+        if (mu.style_son && mu.style_son.style) r.V51 = lib('pV51', { style: mu.style_son.style });
+        const lp = paireDe(e.lien, dernierPlan);
+        if (lp) r.V52 = lib('pV52', { nom: lp.nom, apres: lp.apres });
+        if (o.declencheur)
+          r.V59 = lib('pV59', { sur: lib(o.declencheur === 'hihat' ? 'pV59hat' : 'pV59kick') });
+        if (o.dominante != null || cx.recente('changer'))
+          r.V68 = lib(cx.recente('changer') ? 'pV68change' : 'pV68', { nom: nomDominante(e, cx) });
+        if (cx.chRecent) r.V71 = lib('pV71rythme', { vers: f.motif_change.vers });
+        else if (f.silence) r.V71 = lib('pV71silence');
+        if (mode === 'break') r.V72 = lib('pV72');
+        if (e.silence === true) r.V74 = lib('pV74');
+        if (mode === 'suspension') r.V82 = lib('pV82');
+        return r;
+      }
+      function blocRegles(e, cx) {
+        const joue = reglesQuiJouent(e, cx);
+        const carte = (r) =>
+          `<div class="dbg-regle"><span class="num">${esc(r.n)}</span><div><div class="titre">${esc(r.titre)}</div><div class="regle-texte">${esc(r.regle)}</div><div class="meta joue">${esc(r.date)} · <b>${esc(joue[r.n])}</b></div></div></div>`;
+        const dort = (r) =>
+          `<div class="dbg-dort"><span class="num">${esc(r.n)}</span><span>${esc(r.titre)}</span></div>`;
+        const off = REGLES_OSCAR.filter((r) => joue[r.n] == null);
+        return (
+          `<section><h3><span class="etape">3</span>${esc(LIBELLES.etapeRegles)}</h3>` +
+          REGLES_OSCAR.filter((r) => joue[r.n] != null)
+            .map(carte)
+            .join('') +
+          (off.length
+            ? `<div class="dbg-sous">${esc(LIBELLES.reglesDorment)}</div>${off.map(dort).join('')}`
+            : '') +
+          `</section>`
+        );
+      }
+      function blocEssentiel(e, cx) {
+        const mode = modeDe(e),
+          plan2 = dernierPlan;
+        const vues = plan2.filter((x) => Number(x.opacite) > 0.05),
+          cachees = plan2.length - vues.length;
+        const dom =
+          e.outils && e.outils.dominante != null
+            ? `<span class="discret">${libH('dominante', { nom: esc(nomDominante(e, cx)) })}</span>`
+            : '';
+        return (
+          `<section><h3>${esc(LIBELLES.essentiel)}</h3><div class="ligne"><span class="mode" style="background:${NOMS_MODES[mode] ? `var(--${mode})` : 'var(--texte)'}">${esc(NOMS_MODES[mode] || mode)}</span><span>${e.bpm ? Math.round(e.bpm) + ' BPM' : ''}</span><span class="discret">${esc(e.mood || '')}</span>${dom}</div>` +
+          (vues.length
+            ? `<ul class="dbg-couches">${vues.map((x) => `<li><span class="num">${esc(x.couche)}</span><span class="nom">${esc(x.loop.nom)}</span><span class="meta">${pct(x.opacite)}</span></li>`).join('')}</ul>`
+            : `<div class="vide">${esc(LIBELLES.ecranVide)}</div>`) +
+          (cachees > 0
+            ? `<div class="meta">${libH('couchesCachees', { n: esc(cachees), s: cachees > 1 ? 's' : '' })}</div>`
+            : '') +
+          `</section>`
+        );
+      }
+      function brutHtml(e) {
+        const s = e.son || {},
+          f = s.ecoute || {};
+        const val = (v) =>
+          v == null ? '—' : typeof v === 'object' ? JSON.stringify(v).replace(/,(?=\S)/g, ', ') : String(v);
+        const table = (obj, sauf) =>
+          Object.entries(obj)
+            .filter(([k]) => !sauf.includes(k))
+            .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(val(v))}</dd>`)
+            .join('');
+        return (
+          `<section><h3>${esc(LIBELLES.brutEcoute)}</h3>` +
+          (Object.keys(f).length
+            ? `<dl class="dbg-brut">${table(f, [])}</dl>`
+            : `<div class="vide">${esc(LIBELLES.ecouteAbsente)}</div>`) +
+          `</section>` +
+          (Object.keys(s).length
+            ? `<section><h3>${esc(LIBELLES.brutSon)}</h3><dl class="dbg-brut">${table(s, ['ecoute', 'bande'])}</dl></section>`
+            : '')
+        );
+      }
+      function sectionsExpert(e) {
+        const o = e.outils,
+          lien = e.lien,
+          plan2 = dernierPlan;
+        const enDir = direct(),
+          maintenant = Date.now();
+        const ageS = dernierRecu ? (maintenant - dernierRecu) / 1e3 : null;
+        const mode = e.mode || (e.in_break ? 'break' : 'drop');
+        const couleurMode = NOMS_MODES[mode] ? `var(--${mode})` : 'var(--texte)';
+        const source =
+          `<section><h3>Source</h3><div class="ligne"><span class="source ${enDir ? 'direct' : 'veille'}">${enDir ? '&#9679; DASHBOARD EN DIRECT' : '&#9675; VEILLE'}</span><span class="discret">${ageS == null ? 'aucun état reçu du dashboard' : 'dernier état il y a ' + ageS.toFixed(1) + ' s'}</span></div><div class="meta">vidéos : ${lecture.bascules} entrées, prêtes en ${lecture.bascules ? Math.round(lecture.attente_ms / lecture.bascules) : 0} ms en moyenne · ${lecture.en_attente} en chargement · ${lecture.relances} relances · ${lecture.abandons} abandonnées · ${lecture.noirs_evites} écrans noirs évités · ${lecture.hd_absents} HD absents (lus en SD)</div><div class="meta">qualité : <b>${qualite.forcee ? 'HD (bouton)' : qualite.hd ? 'HD (auto)' : 'SD'}</b> · débit ${qualite.debit == null ? (qualite.erreur ? 'non mesurable' : 'en mesure') : qualite.debit + ' Mbit/s'} · HD au-dessus de ${HD_MONTE} · ${tousLesLoops.filter((l) => l.video_hd).length} loops en HD${enDir && e.outils ? (e.outils.hd_seulement ? ' · le dashboard ne tire que des loops HD' : qualite.forcee ? " · le dashboard tire aussi des loops sans HD (bouton HD de sa page pour l'en empêcher)" : '') : ''}</div>` +
+          (enDir
+            ? ''
+            : `<div class="discret">Dashboard éteint : la page alterne deux loops liées. Catalogue ${montage ? montage.loops.length : 0} loops, vivier du mood ${montage ? montage.pool.length : 0}.</div>`) +
+          `</section>`;
+        const infos = [];
+        if (o && o.palier != null)
+          infos.push(`<span class="p info">Palier des chapitres : ${esc(o.palier)}</span>`);
+        if (o && o.declencheur) {
+          const g = ((o.auto || {}).journal || []).filter((x) => x.outil === 'declencheur').pop();
+          infos.push(
+            `<span class="p info" title="${esc(g ? g.pourquoi : '')}">Le montage coupe sur : <b>${o.declencheur === 'hihat' ? 'le charleston' : 'le kick'}</b></span>`,
+          );
+        }
+        if (o && o.respiration != null) {
+          const g = ((o.auto || {}).journal || []).filter((x) => x.outil === 'respiration').pop();
+          infos.push(
+            `<span class="p info" title="${esc(g ? g.pourquoi : '')}">Respiration : <b>${o.respiration > 1 ? 'un plan tient ' + o.respiration + ' fois plus' : 'plans courts'}</b></span>`,
+          );
+        }
+        if (e.ecrans != null)
+          infos.push(`<span class="p info">${esc(e.ecrans)} écran${e.ecrans > 1 ? 's' : ''}</span>`);
+        const pastilles = o
+          ? OUTILS.map(([k, nom]) =>
+              k === 'autopilot' ? pastille(nom, !!e.autopilot) : k in o ? pastille(nom, !!o[k]) : '',
+            ).join('')
+          : e.autopilot != null
+            ? pastille('Autopilote', !!e.autopilot)
+            : '';
+        const etat =
+          `<section><h3>Mode et outils</h3><div class="ligne"><span class="mode" style="background:${couleurMode}">${esc(NOMS_MODES[mode] || mode)}</span><span>${e.bpm ? Math.round(e.bpm) + ' BPM' : ''}</span><span class="discret">${esc(e.mood || '')}</span></div>` +
+          (o
+            ? ''
+            : `<div class="discret" style="margin-top:6px">Pas d'outils publiés (la veille n'en a pas).</div>`) +
+          `<div class="pastilles">${infos.join('')}${pastilles}</div>` +
+          gestesAuto(o) +
+          `</section>`;
+        let blocLien;
+        if (lien) {
+          const reste = lien.bascule_dans_s == null ? null : Math.max(0, lien.bascule_dans_s - (ageS || 0));
+          const autre = lien.regle === 'theme' ? 'tags' : 'theme';
+          const d = lien.derniere;
+          const avec = d && d.avec ? Object.entries(d.avec) : [];
+          blocLien =
+            `<div class="lien"><div><b>${esc(REGLES[lien.regle] || lien.regle)}</b></div>` +
+            (reste == null
+              ? ''
+              : `<div class="discret">Bascule vers « ${esc(REGLES[autre])} » dans <span class="compte">${Math.ceil(reste)} s</span> (alternance toutes les 180 s)</div>`) +
+            (d && d.colonne != null
+              ? `<div class="discret" style="margin-top:4px">Dernière loop entrée : colonne ${esc(d.colonne)}, règle ${esc(REGLES[d.regle] || d.regle)}` +
+                (avec.length
+                  ? `. Liée à ${avec.map(([c, ts]) => `colonne ${esc(c)} par ${ts.length ? esc(ts.join(', ')) : 'rien'}`).join(' ; ')}.`
+                  : '.') +
+                `</div>`
+              : '') +
+            `</div>`;
+        } else blocLien = `<div class="vide">Aucune règle de lien publiée.</div>`;
+        const lp = paireDe(lien, plan2);
+        if (lp)
+          blocLien =
+            `<div style="color:var(--alerte);font-weight:700;letter-spacing:.04em;margin-bottom:6px">PAIRE DE MONTAGE : ${esc(lp.nom)} après ${esc(lp.apres)}</div>` +
+            (lien.paires
+              ? `<div class="discret" style="margin-bottom:6px">${esc(lien.paires.jouees ?? 0)} paires jouées · chance actuelle ${pct(lien.paires.chance)}</div>`
+              : '') +
+            blocLien;
+        const regle = `<section><h3>Règle de lien</h3>${blocLien}</section>`;
+        const cartes = plan2
+          .map(
+            (x) =>
+              `<div class="carte"><div class="tete"><span class="num">${esc(x.couche)}</span><span class="nom">${esc(x.loop.nom)}</span></div><div class="barre" role="img" aria-label="Opacité ${pct(x.opacite)}"><i style="width:${Math.max(0, Math.min(1, Number(x.opacite) || 0)) * 100}%"></i></div><div class="meta">opacité ${pct(x.opacite)} · fusion ${esc((dernierEtat.couches && dernierEtat.couches[x.couche] && dernierEtat.couches[x.couche].blend) || (x.fusion === 'normal' ? 'Alpha' : x.fusion))} · colonne ${esc(x.loop.colonne ?? '-')} · repère ${pct(x.depart)}</div></div>`,
+          )
+          .join('');
+        const n = plan2.length;
+        const ecran = `<section><h3>À l'écran (${n} couche${n > 1 ? 's' : ''})</h3>${cartes || `<div class="vide">Rien à l'écran.</div>`}</section>`;
+        const communsAll = new Set();
+        const paires = [];
+        for (let i = 0; i < n; i++)
+          for (let j = i + 1; j < n; j++) {
+            const a = plan2[i].loop,
+              b = plan2[j].loop;
+            if (a.id === b.id) continue;
+            const c = enCommun(a, b);
+            c.forEach((t) => communsAll.add(t));
+            paires.push(
+              `<div class="paire${c.length ? '' : ' rien'}"><div class="qui">${esc(a.nom)} <span class="discret">+</span> ${esc(b.nom)}</div>` +
+                (c.length
+                  ? `<div class="tags">${c.map((t) => tagHtml(t, true)).join('')}</div>`
+                  : `<div class="alerte">&#9888; RIEN EN COMMUN</div>`) +
+                `</div>`,
+            );
+          }
+        const commun = `<section><h3>Tags en commun</h3>${paires.join('') || `<div class="vide">Une seule loop : rien à comparer.</div>`}</section>`;
+        const tagsLoops = plan2
+          .map(
+            (x) =>
+              `<div class="carte"><div class="nom">${esc(x.loop.nom)}</div><div class="tags">${tagsListe(tagsDe(x.loop), communsAll)}</div></div>`,
+          )
+          .join('');
+        const tags = `<section><h3>Tags de chaque loop</h3>${tagsLoops || `<div class="vide">Rien à l'écran.</div>`}</section>`;
+        function bandeHtml(s2) {
+          const b = s2.bande || [];
+          if (!b.length) return '';
+          const N = 64,
+            rows = [];
+          const plein = Array.from({ length: N }, (_, i) => b[b.length - N + i] || null);
+          const col = (i) => `grid-column:${i + 2}`;
+          const cls = (r2, i) => 'c' + (r2 && r2.b === 1 ? ' m' : '');
+          plein.forEach((r2, i) => {
+            if (r2 && r2.b === 1 && r2.m % 4 === 1)
+              rows.push(`<span class="num" style="${col(i)};grid-column-end:span 8">${r2.m}</span>`);
+          });
+          const ligne = (n2, lab, f) => {
+            rows.push(`<span class="lab" style="grid-row:${n2}">${lab}</span>`);
+            plein.forEach((r2, i) => rows.push(f(r2, i, `grid-row:${n2};${col(i)}`)));
+          };
+          const mode2 = (v) => (v === 'drop' || v === 'break' ? ' ' + v : '');
+          ligne(
+            7,
+            'tempo calé',
+            (r2, i, st) =>
+              `<span class="${cls(r2, i)}${r2 ? (r2.t === false ? ' k0' : ' k1') : ''}" style="${st}"></span>`,
+          );
+          ligne(
+            2,
+            'kick',
+            (r2, i, st) =>
+              `<span class="${cls(r2, i)}${r2 ? (r2.k ? ' k1' : ' k0') : ''}" style="${st}"></span>`,
+          );
+          const h = (db) => Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
+          ligne(
+            3,
+            'niveau',
+            (r2, i, st) =>
+              `<span class="${cls(r2, i)} niv" style="${st}" title="${r2 && r2.n != null ? r2.n + ' dB, réf ' + (r2.ref ?? '—') : ''}">` +
+              (r2 && r2.n != null ? `<i style="height:${h(r2.n)}%"></i>` : '') +
+              (r2 && r2.ref != null ? `<b style="bottom:${h(r2.ref)}%"></b>` : '') +
+              `</span>`,
+          );
+          ligne(
+            4,
+            'kicks lisent',
+            (r2, i, st) => `<span class="${cls(r2, i)}${mode2(r2 && r2.lk)}" style="${st}"></span>`,
+          );
+          ligne(
+            5,
+            'niveau lit',
+            (r2, i, st) => `<span class="${cls(r2, i)}${mode2(r2 && r2.ln)}" style="${st}"></span>`,
+          );
+          ligne(
+            6,
+            'joué',
+            (r2, i, st) => `<span class="${cls(r2, i)}${mode2(r2 && r2.j)}" style="${st}"></span>`,
+          );
+          const regle2 =
+            s2.decide === 'niveau'
+              ? 'le niveau du grave, confirmé par les kicks (2 temps si la marche est franche)'
+              : 'les kicks : 2 à la suite = drop, 2 temps sans = break';
+          const r = s2.raison;
+          return (
+            `<div class="bande" role="img" aria-label="16 dernières mesures">${rows.join('')}</div><div class="meta">décide : ${esc(regle2)}</div>` +
+            (s2.moment
+              ? `<div class="meta">moment (buffer 10 s) : <b>${esc(s2.moment)}</b>${s2.moment_z ? ' · force ' + s2.moment_z.force + ' · tendance ' + s2.moment_z.tendance + ' · brillance ' + s2.moment_z.brillance : ''}</div>`
+              : '') +
+            (s2.morceau_son
+              ? `<div class="meta">morceau au son : ${s2.morceau_son.mesures_du_morceau != null ? s2.morceau_son.mesures_du_morceau + ' mesures dans ce morceau' : 'en écoute'}${s2.morceau_son.etrangete != null ? ' · étrangeté ' + s2.morceau_son.etrangete + ' (seuil ' + s2.morceau_son.seuil + ')' : ''}${s2.morceau_son.dernier ? ' · dernier changement : ' + esc(s2.morceau_son.dernier.raison) : ''}</div>`
+              : '') +
+            (s2.madmom
+              ? `<div class="meta">madmom (temps en direct) : ${s2.madmom.actif ? (s2.madmom.parle ? '<b>suit les temps</b>' : 'se tait (break ou silence)') + (s2.madmom.bpm ? ' · ' + s2.madmom.bpm + ' BPM' : '') + ' · ' + (s2.madmom.recales || 0) + ' recalages' : 'éteint' + (s2.madmom.erreur ? ' (' + esc(s2.madmom.erreur) + ')' : '')}</div>`
+              : '') +
+            (s2.densite && s2.densite.kicks !== void 0
+              ? `<div class="meta">densité (coups par temps, 2 mesures) : kicks ${s2.densite.kicks} · charlestons ${s2.densite.charlestons} · caisses claires ${s2.densite.caisses} · notes ${s2.densite.notes}${s2.densite_rapport != null ? ' · <b>' + s2.densite_rapport + "</b> fois l'habitude" : ''}${s2.sejour_satellites && s2.sejour_satellites.s ? ' · loops autour de la dominante : <b>' + s2.sejour_satellites.s + ' s</b> (' + esc(s2.sejour_satellites.pourquoi) + ')' : ''}</div>`
+              : '') +
+            (r
+              ? `<div class="raison">${r.joue ? `dernière bascule : <b>${esc(r.joue)}</b>, ` : ''}${esc(r.pourquoi)}</div>`
+              : '')
+          );
+        }
+        const s = e.son;
+        let son;
+        if (!s || !Object.keys(s).length) {
+          son = `<section><h3>Son qui entre</h3><div class="vide">${direct() ? 'Le dashboard ne publie pas encore le son (à relancer).' : 'Veille : tempo fixe, aucun son écouté.'}</div></section>`;
+        } else {
+          const db = Number(s.niveau_db),
+            plancher = Number(s.plancher_db ?? -60);
+          const niveau = Number.isFinite(db) ? Math.max(0, Math.min(1, (db - plancher) / -plancher)) : 0;
+          const entendu = s.statut === 'ok' && !s.alerte;
+          const sourceNom =
+            s.source === 'loopback'
+              ? "son de l'ordinateur"
+              : s.source == null
+                ? 'aucune'
+                : `micro ${s.source}`;
+          son =
+            `<section><h3>Son qui entre</h3>` +
+            (s.alerte ? `<div class="paire rien"><span class="alerte">▲ ${esc(s.alerte)}</span></div>` : '') +
+            `<div class="pastilles">${pastille(entendu ? 'Son entendu' : 'Pas de son', entendu)}<span class="pastille">${esc(sourceNom)}</span></div><div class="barre" role="img" aria-label="Niveau ${Number.isFinite(db) ? db + ' dB' : 'inconnu'}"><i style="width:${niveau * 100}%"></i></div><div class="meta">niveau ${Number.isFinite(db) ? db.toFixed(1) + ' dB' : '—'} · seuil kick ${s.seuil_db ?? '—'} dB · ${s.kicks_10s ?? 0} coupes sur la grille en 10 s</div>` +
+            (s.kicks_libres_10s !== void 0
+              ? `<div class="meta">kicks entendus (sans grille) : ${s.kicks_libres_10s} en 10 s${Number.isFinite(s.kick_niveau_db) ? ' · niveau ' + s.kick_niveau_db + ' dB' : ''}</div>`
+              : '') +
+            `<div class="meta">tempo ${(e.bpm || 0).toFixed(1)} BPM${s.tempo_tape ? ' (tapé)' : s.tempo_lu ? ' (lu au son ' + s.tempo_lu + (s.tempo_retenu ? ', retenu ' + s.tempo_retenu : ', pas encore stable') + ')' : ''} · confiance ${Math.round((s.confiance || 0) * 100)} % · mesure ${s.mesure ?? '—'}${s.temps ? '.' + s.temps : ''} · section ${esc(s.section ?? '—')}${s.lecture ? ' · entend ' + esc(s.lecture) : ''}</div>` +
+            (s.partie !== void 0
+              ? `<div class="meta">partie du morceau : <b>${esc(s.partie || '—')}</b>${s.partie ? ' (' + Math.round((s.partie_confiance || 0) * 100) + ' %' + (s.partie_depuis ? ', depuis la mesure ' + s.partie_depuis : '') + ')' : ''}${s.partie_raison ? ' · ' + esc(s.partie_raison) : ''}</div>`
+              : '') +
+            (s.partie !== void 0
+              ? `<div class="meta">phrase : ${Number.isInteger(s.partie_place_phrase) ? 'mesure ' + (s.partie_place_phrase + 1) + '/8' : 'grille pas encore trouvée'}${Number.isInteger(s.partie_drop_dans) ? ' · <b>drop dans ' + s.partie_drop_dans + ' mesure' + (s.partie_drop_dans > 1 ? 's' : '') + '</b>' + (s.partie_montee_signe ? ' (' + esc(s.partie_montee_signe) + ')' : '') : ''}${s.partie_revient ? ' · revient : comme la mesure ' + s.partie_revient.comme + ', fin dans ' + s.partie_revient.fin_dans : ''}</div>`
+              : '') +
+            bandeHtml(s) +
+            `</section>`;
+        }
+        const mu = e.musique;
+        let musique;
+        if (!mu) {
+          musique = `<section><h3>Musique reconnue</h3><div class="vide">${direct() ? 'Le dashboard ne publie pas encore la reconnaissance (à relancer).' : "Veille : rien n'est écouté."}</div></section>`;
+        } else {
+          const etatOreille = !mu.ecoute
+            ? 'Reconnaissance éteinte'
+            : !mu.cle && !mu.shazam
+              ? 'Pas de clé AudD'
+              : mu.quota_audd
+                ? 'AudD : limite atteinte, à recharger'
+                : mu.audd && mu.audd.plafond
+                  ? `AudD : plafond ${mu.audd.plafond === 'heure' ? "de l'heure" : 'du jour'} atteint, il se tait`
+                  : mu.erreur
+                    ? 'Erreur de reconnaissance'
+                    : 'Reconnaissance active';
+          const ok =
+            mu.ecoute &&
+            (mu.cle || mu.shazam) &&
+            !mu.erreur &&
+            !mu.quota_audd &&
+            !(mu.audd && mu.audd.plafond);
+          const depuis = mu.dernier_essai ? `${Math.round(Date.now() / 1e3 - mu.dernier_essai)} s` : 'jamais';
+          const styles = { house: 'House', techno: 'Techno', 'les deux': 'House · Techno' };
+          const NOMS = {
+            shazam: 'Shazam',
+            audd: 'AudD',
+            acrcloud: 'ACRCloud',
+            deezer: 'Deezer',
+            reccobeats: 'ReccoBeats',
+            getsongbpm: 'GetSongBPM',
+          };
+          const mo = e.morceau || {},
+            av = avancement(mo),
+            b = mo.bpm;
+          const par = (mo.sources || []).map((x) => NOMS[x] || x).join(' + ');
+          const sur = mo.confiance === 'sûr';
+          const signe = (v) => (v > 0 ? '+' : '') + String(v).replace('.', ',');
+          const fr = (v) => String(v).replace('.', ',');
+          const src = esc(NOMS[mo.bpm_source] || mo.bpm_source || '?');
+          const bpm2 =
+            b && b.mesure == null
+              ? `BPM : base <b>${fr(b.base)}</b> (${src}) · pas encore mesuré au son`
+              : b
+                ? `BPM : prédit au son <b>${fr(b.predit ?? b.mesure)}</b> · base <b>${fr(b.base)}</b> (${src}) · ` +
+                  (b.corrige
+                    ? `<b>corrigé par le titre : ${fr(b.corrige)}</b>`
+                    : b.accord === 'proche'
+                      ? `joué à ${signe(b.ecart_pct)} % : la mesure garde la main`
+                      : b.accord === 'double'
+                        ? 'la mesure compte le double : elle garde la main'
+                        : b.accord === 'moitié'
+                          ? 'la mesure compte la moitié : elle garde la main'
+                          : 'ils divergent : la mesure garde la main')
+                : e.titre
+                  ? `BPM : au son ${Math.round(e.bpm || 0)} · base inconnue`
+                  : '';
+          const st = mo.style || {};
+          const style = e.titre
+            ? `style : prédit au son <b>${esc(st.predit || '—')}</b>${st.corrige ? ` · <b>corrigé par le titre : ${esc(st.corrige)}</b>` : ''}${mo.styles && mo.styles.length ? ' · Discogs : ' + esc(mo.styles.join(', ')) : ''}${mu.genres && mu.genres.length ? ' (' + esc(mu.genres.join(', ')) + ')' : ''}${mo.familles && mo.familles.length ? ' · familles : ' + esc(mo.familles.join(', ')) : ''} · joué ${esc(st.joue || e.mood || '—')}`
+            : '';
+          const fiche = [mo.album, mo.label, mo.annee, mo.tonalite, mo.version]
+            .filter(Boolean)
+            .map(esc)
+            .join(' · ');
+          const mes =
+            mo.mesures_totales != null
+              ? `mesure ${mo.mesure_du_morceau} sur ${Math.round(mo.mesures_totales)} · ${Math.round(mo.mesures_restantes)} restantes · prochaine phrase de 8 dans ${mo.frontieres['8']}, de 16 dans ${mo.frontieres['16']}, de 32 dans ${mo.frontieres['32']}`
+              : '';
+          const c = mu.compteurs,
+            tp = mu.trouves_par || {};
+          const ecoutes = c
+            ? Object.entries(c)
+                .filter(([, v]) => v)
+                .map(([k, v]) => `${NOMS[k] || k} ${tp[k] ?? 0}/${v}`)
+                .join(' · ')
+            : '';
+          musique =
+            `<section><h3>Musique reconnue</h3><div class="pastilles">${pastille(etatOreille, ok)}${pastille('NSFW (techno seulement)', !!e.nsfw)}</div><div class="ligne"><b>${esc(e.titre || '—')}</b>${e.artiste ? ' · ' + esc(e.artiste) : ''}</div>` +
+            (e.titre && mo.confiance
+              ? `<div class="pastilles"><span class="p ${sur ? 'on' : 'info'}">${sur ? '&#9679; ' : ''}${esc(mo.confiance)}</span>${par ? `<span class="p info">reconnu par ${esc(par)}</span>` : ''}</div>`
+              : '') +
+            (mu.doute && mu.doute.titre
+              ? `<div class="paire rien"><span class="alerte">▲ doute</span> « ${esc(mu.doute.titre)} »${mu.doute.artiste ? ' · ' + esc(mu.doute.artiste) : ''} entendu une fois${mu.doute.sources && mu.doute.sources.length ? ' par ' + esc(mu.doute.sources.map((x) => NOMS[x] || x).join(', ')) : ''} : pas affiché tant qu'il n'est pas réentendu</div>`
+              : '') +
+            (av
+              ? av.duree
+                ? `<div class="barre${av.fin ? ' fin' : ''}" role="img" aria-label="Avancement du morceau"><i style="width:${(av.pos / av.duree) * 100}%"></i></div><div class="meta temps"><span>${mmss(av.pos)}</span><span>${av.fin ? 'fin dans ' : 'reste '}${mmss(av.reste)}</span><span>${mmss(av.duree)}</span></div>`
+                : `<div class="meta">${mmss(av.pos)} dans le morceau · durée inconnue</div>`
+              : '') +
+            (fiche ? `<div class="meta">${fiche}</div>` : '') +
+            (mes ? `<div class="meta">${mes}</div>` : '') +
+            (bpm2 ? `<div class="meta">${bpm2}</div>` : '') +
+            (style ? `<div class="meta">${style}</div>` : '') +
+            (mu.style_son
+              ? `<div class="meta">au son : <b>${esc(mu.style_son.style)}</b> (score ${mu.style_son.score}, tempo ${mu.style_son.tempo} ; ${Object.entries(
+                  mu.style_son.raisons || {},
+                )
+                  .map(([k, v]) => esc(k) + ' ' + (v > 0 ? '+' : '') + v)
+                  .join(
+                    ', ',
+                  )})${mu.style_son_tenu ? ' · retenu ' + esc(mu.style_son_tenu) : ' · pas encore stable'}</div>`
+              : '') +
+            (mu.audd
+              ? `<div class="meta">AudD (payant) : <b>${mu.audd.aujourdhui}</b> aujourd'hui, ${mu.audd.heure} cette heure (plafonds ${mu.audd.par_heure} par heure, ${mu.audd.par_jour} par jour), ${mu.audd.total} en tout</div>`
+              : '') +
+            `<div class="meta">${ecoutes ? 'trouvés / écoutes : ' + esc(ecoutes) + (mu.contredits ? ' · ' + mu.contredits + ' titre' + (mu.contredits > 1 ? 's' : '') + ' contredit' + (mu.contredits > 1 ? 's' : '') : '') : `${mu.trouves ?? 0} reconnus sur ${mu.essais ?? 0} essais`} · dernière écoute il y a ${depuis}${mu.erreur ? ' · ' + esc(mu.erreur) : ''}</div></section>`;
+        }
+        return brutHtml(e) + source + son + musique + etat + regle + ecran + commun + tags;
+      }
+      function rendDebug() {
+        if (panneau.hidden) return;
+        const v = construisConsole();
+        majTete();
+        const e = dernierEtat;
+        if (!e) {
+          v.son.hidden = true;
+          v.attente.hidden = false;
+          v.attente.textContent = LIBELLES.attenteEtat;
+          return;
+        }
+        majVivant(e);
+        const cx = contexteEcoute(e);
+        const html =
+          blocDeduit(e, cx) +
+          blocRegles(e, cx) +
+          blocEssentiel(e, cx) +
+          (v.expert ? `<h3 class="dbg-zone">${esc(LIBELLES.expertTitre)}</h3>${sectionsExpert(e)}` : '');
+        if (html !== dernierHtml) {
+          dernierHtml = html;
+          v.corps.innerHTML = html;
+        }
+      }
+      setInterval(rendDebug, 250);
+      boutonDebug.onclick = () => basculeDebug();
+      addEventListener('keydown', (ev) => {
+        if (ev.key === 'd' || ev.key === 'D') basculeDebug();
+      });
+      if (q.has('debug')) basculeDebug(true);
+      document
+        .querySelectorAll('[data-mood]')
+        .forEach((b) => (b.onclick = () => choisisMood(b.dataset.mood)));
+      document.getElementById('plein').onclick = () =>
+        document.fullscreenElement
+          ? document.exitFullscreen()
+          : document.documentElement.requestFullscreen?.();
+      let calme;
+      addEventListener('pointermove', () => {
+        document.body.classList.remove('calme');
+        clearTimeout(calme);
+        calme = setTimeout(() => document.body.classList.add('calme'), 3e3);
+      });
+      demarre().catch((e) => {
+        document.getElementById('depart').textContent = 'manifest introuvable';
+        console.error(e);
+        window.afterTV.echecManifeste = true;
+        dispatchEvent(new Event('aftertv:echec-manifeste'));
+      });
+      const signature = async () => {
+        const r = await fetch(location.pathname + '?v=' + Date.now(), { cache: 'no-store' });
+        if (!r.ok) return null;
+        const t = await r.text();
+        let h = 0;
+        for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0;
+        return t.includes('<script') ? `${t.length}:${h}` : null;
+      };
+      const peutRecharger = () => {
+        if (document.visibilityState === 'hidden') return true;
+        const i = window.__interface;
+        if (!i || i.phase() === 'entree') return true;
+        return !document.fullscreenElement && !window.__visiteur?.source?.();
+      };
+      const versionChargee = await signature().catch(() => null);
+      let nouvelleVersion = false;
+      const recharge = () => {
+        if (nouvelleVersion && peutRecharger()) location.reload();
+      };
+      if (versionChargee) {
+        setInterval(
+          async () => {
+            if (!nouvelleVersion) {
+              const v = await signature().catch(() => null);
+              nouvelleVersion = !!v && v !== versionChargee;
+            }
+            recharge();
+          },
+          Number(window.__versionMs) || 6e4,
+        );
+        document.addEventListener('visibilitychange', recharge);
+      }
+    </script>
+    <script type="module" src="interface.js"></script>
+  </body>
+</html>
