@@ -387,6 +387,9 @@ class LiveMode:
 
     def _solo_pool(self, kind: str) -> list:
         vivier = {'suspension': self.suspension_pool, 'hyper': self.hyper_pool, 'one_shot': self.one_shot_pool}.get(kind, self.break_pool)
+        if kind == 'hyper' and self.tags_by_column:
+            rapides = [c for c in self.pool if (self.tags_by_column.get(c) or {}).get('vitesse') == 'rapide']
+            return list(dict.fromkeys(list(vivier) + rapides))
         if kind != 'break' or not self.tags_by_column:
             return vivier
         posees = [c for c in vivier if (self.tags_by_column.get(c) or {}).get('vitesse') != 'rapide']
