@@ -2263,6 +2263,7 @@
         pV72: 'break en cours : la loop reste',
         pV74: 'pas de son : écran noir',
         pV82: 'suspension en cours',
+        pV99: 'traînées à {niveau} %, paris justes {justes} sur {total}',
         colonne: 'colonne {n}',
         dominante: 'loop dominante : {nom}',
         ecranVide: "Rien à l'écran.",
@@ -2298,6 +2299,13 @@
           regle:
             "Chaque séquence du drop coupe d'abord sur le kick (la première moitié), puis sur la caisse claire (le quart suivant), puis sur le charleston (le dernier quart). Montage rapide : séquences de 8 mesures, sinon 16. Un break remet au kick.",
           date: '2026-11-19',
+        },
+        {
+          n: 'V99',
+          titre: 'Traînées : le pari sur le break',
+          regle:
+            "Après 32 mesures de drop, le pilote parie sur un break. Sur les 2 dernières mesures de chaque phrase de 16, les traînées montent (à moitié, puis fortes). Si le break arrive, elles tiennent ses 2 premières mesures puis s'effacent (pari juste). Si le drop continue, elles s'éteignent (pari faux). Un break que le pilote n'a pas vu venir les a quand même 2 mesures. Un drop de moins de 32 mesures n'en a pas. Chaque pari est noté dans la console, avec le compte.",
+          date: '2026-11-20',
         },
         {
           n: 'V68',
@@ -2897,6 +2905,14 @@
         if (mode === 'break') r.V72 = lib('pV72');
         if (e.silence === true) r.V74 = lib('pV74');
         if (mode === 'suspension') r.V82 = lib('pV82');
+        if (Number(o.trails) > 0) {
+          const p = o.paris_trails || { justes: 0, faux: 0 };
+          r.V99 = lib('pV99', {
+            niveau: Math.round(o.trails * 100),
+            justes: p.justes,
+            total: p.justes + p.faux,
+          });
+        }
         return r;
       }
       function blocRegles(e, cx) {

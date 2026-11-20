@@ -407,6 +407,8 @@ function vue(e = {}, r = null, { tempo = null, source = null, pos = null } = {})
     journal: brut.map(geste),
     dominante: o.dominante ?? null,
     declencheur: o.declencheur ?? null,
+    trails: Number(o.trails) || 0,
+    paris: o.paris_trails ?? null,
     sejour: o.sejour_satellites ?? null,
     couches,
     colonnes: e.colonnes ?? null,
@@ -460,6 +462,12 @@ const REGLES = [
     titre: 'Kick, then snare, then hi-hat',
     regle:
       'Each sequence of a drop cuts on the kick first (the first half), then on the snare (the next quarter), then on the hi-hat (the last quarter). A fast edit runs 8-bar sequences, a slower one 16. A break goes back to the kick.',
+  },
+  {
+    n: 'V99',
+    titre: 'Trails bet on the break',
+    regle:
+      'After 32 bars of a drop, the autopilot bets on a break. On the last 2 bars of each 16-bar phrase the trails rise, to half and then to full. If the break lands, they hold its first 2 bars and fade out. If the drop goes on, they switch off. A break the autopilot did not see coming still gets them for 2 bars. A drop under 32 bars has none.',
   },
   {
     n: 'V68',
@@ -532,6 +540,8 @@ function reglesActives(v, { nom = (c) => `column ${c}`, communs = [] } = {}) {
   if (v.styleSon) r.V51 = `style heard: ${v.styleSon}`;
   if (v.lien && v.lien.regle === 'paire' && v.lien.derniere?.nom)
     r.V52 = `${v.lien.derniere.nom} came in as one of Rien's pairs`;
+  if (v.trails > 0)
+    r.V99 = `trails at ${Math.round(v.trails * 100)}%${v.paris ? `, ${v.paris.justes} right bets out of ${v.paris.justes + v.paris.faux}` : ''}`;
   if (v.declencheur)
     r.V98 = `cuts fall on the ${{ hihat: 'hi-hat', snare: 'snare' }[v.declencheur] ?? 'kick'}`;
   if (v.dominante != null) r.V68 = `${changeRecent ? 'new ' : ''}dominant loop: ${nom(v.dominante)}`;
