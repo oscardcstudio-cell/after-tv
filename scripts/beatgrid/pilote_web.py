@@ -180,6 +180,7 @@ class Pilote:
         self._fusion = None
         self._fusion_haut = None
         self.opacite = 1.0
+        self.trails = 0.0
         self.mode_add = False
         self._depuis: dict = {}
         self._dernier_pas_tv: float | None = None
@@ -238,7 +239,8 @@ class Pilote:
             self._break_index = beat.index
             self.live.next_break_nearby()
             self.apply_live()
-        for _ in range(2 if self.live.trigger == 'hihat' else 1):
+        coups = {'hihat': 2, 'snare': 1 if beat.beat in (2, 4) else 0}.get(self.live.trigger, 1)
+        for _ in range(coups):
             step = self.sequencer.on_pulse(self.live.trigger)
             if step is not None:
                 self._fire(step)
@@ -297,7 +299,7 @@ class Pilote:
 
     def infos(self) -> dict:
         lv = self.live
-        return {'bpm': self.bpm, 'mood': self.mood, 'autopilot': self.autopilot, 'in_break': lv.in_break, 'mode': lv.solo_kind or 'drop', 'ecrans': len(lv.columns), 'familles': list(self.familles), 'style_repli': list(self.replis['style']), 'tags': list(self.tags_voulus), 'replis': {k: list(v) for k, v in self.replis.items()}, 'coupes_rapides': self.coupes_rapides, 'partie': self.partie, 'silence': self.silence(), 'outils': {'superposition': lv.superposition, 'rafale': lv.rafale, 'declencheur': lv.trigger, 'respiration': lv.hold_max, 'reperes': lv.cues_on, 'fusion_add': self.mode_add, 'dosage': round(self.opacite, 2), 'plans_longs': lv.dominante, 'dominante': lv.columns[0] if lv.dominante and lv.columns and (lv.solo_kind is None) else None, 'sejour_satellites': dict(self.sejour_satellites), 'journal': list(self.journal[-8:])}, 'lien': {'regle': lv.lien(), 'derniere': dict(lv.dernier_lien)}, 'raison': self._raison, 'colonnes': {str(c): lv.etiquettes(c) for c in lv.columns}}
+        return {'bpm': self.bpm, 'mood': self.mood, 'autopilot': self.autopilot, 'in_break': lv.in_break, 'mode': lv.solo_kind or 'drop', 'ecrans': len(lv.columns), 'familles': list(self.familles), 'style_repli': list(self.replis['style']), 'tags': list(self.tags_voulus), 'replis': {k: list(v) for k, v in self.replis.items()}, 'coupes_rapides': self.coupes_rapides, 'partie': self.partie, 'silence': self.silence(), 'outils': {'superposition': lv.superposition, 'rafale': lv.rafale, 'declencheur': lv.trigger, 'respiration': lv.hold_max, 'trails': self.trails, 'paris_trails': dict(self.outils.paris), 'reperes': lv.cues_on, 'fusion_add': self.mode_add, 'dosage': round(self.opacite, 2), 'plans_longs': lv.dominante, 'dominante': lv.columns[0] if lv.dominante and lv.columns and (lv.solo_kind is None) else None, 'sejour_satellites': dict(self.sejour_satellites), 'journal': list(self.journal[-8:])}, 'lien': {'regle': lv.lien(), 'derniere': dict(lv.dernier_lien)}, 'raison': self._raison, 'colonnes': {str(c): lv.etiquettes(c) for c in lv.columns}}
 
     def set_mood(self, mood: str) -> None:
         if mood != 'tout' and mood not in live.MOODS:
@@ -647,7 +649,7 @@ class Pilote:
     def _contexte(self, beat) -> 'outils_auto.Contexte':
         lv = self.live
         e = getattr(self, '_ecoute', None) or {}
-        return outils_auto.Contexte(index=beat.index, mode=lv.solo_kind or 'drop', ecrans=len(lv.columns), rafale=lv.rafale, declencheur=lv.trigger, respiration=lv.hold_max, reperes=lv.cues_on, masque=self.mode_add, dosage=self.opacite, strobe=0, plans=lv.dominante, style=self.mood, hats=e.get('hats'), tempo=self.bpm, partie=self.partie, kick_manque=self._kick_manque(beat.t), plein=e.get('plein'), plein_pourquoi=e.get('plein_pourquoi') or '', monte=e.get('monte'), monte_pourquoi=e.get('monte_pourquoi') or '', a_suspension=bool(lv.suspension_pool), a_hyper=bool(lv.hyper_pool), a_masque=bool(lv.mask_pool))
+        return outils_auto.Contexte(index=beat.index, mode=lv.solo_kind or 'drop', ecrans=len(lv.columns), rafale=lv.rafale, declencheur=lv.trigger, respiration=lv.hold_max, reperes=lv.cues_on, masque=self.mode_add, dosage=self.opacite, strobe=0, plans=lv.dominante, trails=self.trails, style=self.mood, hats=e.get('hats'), tempo=self.bpm, partie=self.partie, kick_manque=self._kick_manque(beat.t), plein=e.get('plein'), plein_pourquoi=e.get('plein_pourquoi') or '', monte=e.get('monte'), monte_pourquoi=e.get('monte_pourquoi') or '', a_suspension=bool(lv.suspension_pool), a_hyper=bool(lv.hyper_pool), a_masque=bool(lv.mask_pool))
 
     def _kick_manque(self, t: float) -> bool | None:
         kicks = [k for k in getattr(self, '_kicks_t', []) if k <= t]
@@ -708,6 +710,8 @@ class Pilote:
         elif outil == 'dosage':
             self.opacite = max(0.0, min(1.0, float(valeur)))
             self._shown = None
+        elif outil == 'trails':
+            self.trails = max(0.0, min(1.0, float(valeur)))
 
     def set_video_count(self, n: int, reserve: bool=True) -> None:
         self.live.set_count(n, reserve)

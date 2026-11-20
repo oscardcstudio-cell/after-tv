@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
-CADENCES = ('beat', '2beats', 'bar', 'kick', 'hihat')
-PULSE_CADENCES = ('kick', 'hihat')
+CADENCES = ('beat', '2beats', 'bar', 'kick', 'snare', 'hihat')
+PULSE_CADENCES = ('kick', 'snare', 'hihat')
 
 @dataclass
 class Step:

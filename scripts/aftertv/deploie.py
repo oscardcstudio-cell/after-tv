@@ -19,7 +19,7 @@ SORTIE = os.path.join(REPO, 'aftertv', 'deploiement.json')
 REGLAGES = os.path.join(REPO, 'scripts', 'beatgrid', 'settings.json')
 BUCKET = 'after-tv'
 PROJET = 'after-tv'
-FICHIERS_PAGE = ('index.html', 'interface.js', 'interface.css', 'montage.js', 'miroir.js', 'oreille.html', 'oreille.js', 'moteur.js', 'reglages.js', 'paires.json', 'regles_montage.json', 'visiteur.js', 'radio.js', 'tags-en.js', 'audience.js', 'titre.js', 'adresses.js', 'image.js', 'vhs.js', 'how-it-works.html', 'how-it-works.js', 'how-it-works.css', 'radios/cbs.png', 'radios/disco-fetish.png', 'radios/tdm.png', 'liens.js', 'lecteur.js', 'services/youtube.svg', 'services/soundcloud.svg', 'services/spotify.svg', 'services/mixcloud.svg', 'services/applemusic.svg')
+FICHIERS_PAGE = ('index.html', 'interface.js', 'interface.css', 'montage.js', 'miroir.js', 'oreille.html', 'oreille.js', 'moteur.js', 'reglages.js', 'paires.json', 'regles_montage.json', 'visiteur.js', 'radio.js', 'tags-en.js', 'audience.js', 'titre.js', 'adresses.js', 'image.js', 'vhs.js', 'trails.js', 'how-it-works.html', 'how-it-works.js', 'how-it-works.css', 'radios/cbs.png', 'radios/disco-fetish.png', 'radios/tdm.png', 'liens.js', 'lecteur.js', 'services/youtube.svg', 'services/soundcloud.svg', 'services/spotify.svg', 'services/mixcloud.svg', 'services/applemusic.svg')
 MODULES_PAGE = {'beatgrid': ('kick.py', 'sections.py', 'structure.py', 'oreille_web.py', 'grid.py', 'sequencer.py', 'etiquettes.py', 'plans_loops.py', 'live.py', 'outils_auto.py', 'miroir_web.py', 'morceau.py', 'pilote_web.py', 'motifs.py', 'matiere.py', 'groove.py', 'montee_mix.py', 'memoire_set.py', 'montage_ecoute.py', 'densite.py', 'voix_instruments.py'), 'aftertv': ('reconnait.py',)}
 
 def wrangler_cmd() -> list[str]:

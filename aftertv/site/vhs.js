@@ -94,6 +94,30 @@ function vhsPossible(urlMedias, page = globalThis.location) {
     return false;
   }
 }
+function composerCouches(ctx, couches, w, h) {
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.filter = 'none';
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, w, h);
+  let rien = true;
+  for (const c of couches) {
+    if (!(c.opacite > 0)) continue;
+    for (const v of c.videos) {
+      if (v.readyState < 2) continue;
+      ctx.globalAlpha = Math.min(1, c.opacite);
+      ctx.globalCompositeOperation = fusionCanvas(c.fusion);
+      ctx.filter = c.filtre && c.filtre !== 'none' ? c.filtre : 'none';
+      const [sx, sy, sw, sh] = recadrage(v.videoWidth, v.videoHeight, w, h);
+      ctx.drawImage(v, sx, sy, sw, sh, 0, 0, w, h);
+      rien = false;
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.filter = 'none';
+  return !rien;
+}
 function creerVhs({
   couches,
   parent = document.body,
@@ -176,27 +200,7 @@ function creerVhs({
     ctxEcran.putImageData(new ImageData(new Uint8ClampedArray(d.px), d.w, d.h), 0, 0);
     ecran.hidden = false;
   }
-  function composer(w, h) {
-    ctxPrise.globalCompositeOperation = 'source-over';
-    ctxPrise.globalAlpha = 1;
-    ctxPrise.filter = 'none';
-    ctxPrise.fillStyle = '#000';
-    ctxPrise.fillRect(0, 0, w, h);
-    let rien = true;
-    for (const c of couches()) {
-      if (!(c.opacite > 0)) continue;
-      for (const v of c.videos) {
-        if (v.readyState < 2) continue;
-        ctxPrise.globalAlpha = Math.min(1, c.opacite);
-        ctxPrise.globalCompositeOperation = fusionCanvas(c.fusion);
-        ctxPrise.filter = c.filtre && c.filtre !== 'none' ? c.filtre : 'none';
-        const [sx, sy, sw, sh] = recadrage(v.videoWidth, v.videoHeight, w, h);
-        ctxPrise.drawImage(v, sx, sy, sw, sh, 0, 0, w, h);
-        rien = false;
-      }
-    }
-    return !rien;
-  }
+  const composer = (w, h) => composerCouches(ctxPrise, couches(), w, h);
   function boucle() {
     rafId = requestAnimationFrame(boucle);
     const o = ouvriers.find((x) => x.libre);
@@ -253,6 +257,7 @@ export {
   LARGEUR_MAX,
   LIGNES,
   MESURES_TENUES,
+  composerCouches,
   creerAuto,
   creerVhs,
   fusionCanvas,

@@ -303,7 +303,7 @@ function gesteEn(g, nom = (c) => `column ${c}`) {
   } else {
     switch (g.outil) {
       case 'declencheur':
-        quoi = v === 'hihat' ? 'Cuts follow the hi-hat' : 'Cuts follow the kick';
+        quoi = `Cuts follow the ${{ hihat: 'hi-hat', snare: 'snare' }[v] ?? 'kick'}`;
         break;
       case 'dosage':
         quoi = `Mask opacity ${Math.round(Number(v) * 100)}%`;
@@ -319,6 +319,9 @@ function gesteEn(g, nom = (c) => `column ${c}`) {
         break;
       case 'strobe':
         quoi = Number(v) > 0 ? 'Strobe' : 'Strobe off';
+        break;
+      case 'trails':
+        quoi = Number(v) > 0 ? 'Trails' : 'Trails off';
         break;
       case 'suspension':
         quoi = g.action === 'jouer' ? 'Suspension' : 'Back to the drop';
@@ -453,10 +456,10 @@ const REGLES = [
     regle: `When a loop from one of Rien's pairs plays, its partner sometimes follows. Never in the first ${min(M.PAIRE_PAS_AVANT_S)} minutes, then 1 time in ${Math.round(1 / M.PAIRE_CHANCE)}, and at least ${min(M.PAIRE_ECART_S)} minutes apart (V83).`,
   },
   {
-    n: 'V59',
-    titre: 'Kick or hi-hat',
+    n: 'V98',
+    titre: 'Kick, then snare, then hi-hat',
     regle:
-      'Cuts follow the hi-hat when it is clear, for 2 bars at most. Then they go back to the kick for at least 12.',
+      'Each sequence of a drop cuts on the kick first (the first half), then on the snare (the next quarter), then on the hi-hat (the last quarter). A fast edit runs 8-bar sequences, a slower one 16. A break goes back to the kick.',
   },
   {
     n: 'V68',
@@ -529,7 +532,8 @@ function reglesActives(v, { nom = (c) => `column ${c}`, communs = [] } = {}) {
   if (v.styleSon) r.V51 = `style heard: ${v.styleSon}`;
   if (v.lien && v.lien.regle === 'paire' && v.lien.derniere?.nom)
     r.V52 = `${v.lien.derniere.nom} came in as one of Rien's pairs`;
-  if (v.declencheur) r.V59 = `cuts fall on the ${v.declencheur === 'hihat' ? 'hi-hat' : 'kick'}`;
+  if (v.declencheur)
+    r.V98 = `cuts fall on the ${{ hihat: 'hi-hat', snare: 'snare' }[v.declencheur] ?? 'kick'}`;
   if (v.dominante != null) r.V68 = `${changeRecent ? 'new ' : ''}dominant loop: ${nom(v.dominante)}`;
   const ch = v.ecoute && v.ecoute.motif_change;
   if (ch && Number.isInteger(v.mesure) && Number.isFinite(ch.mesure) && v.mesure - ch.mesure <= 4) {
@@ -565,11 +569,11 @@ const VITRINE = [
   },
   {
     cle: 'coupe',
-    regles: ['V59'],
-    onglet: 'Kick or hi‑hat',
-    titre: 'Cuts follow the kick, or the hi-hat for 2 bars',
+    regles: ['V98'],
+    onglet: 'Kick, snare, hi‑hat',
+    titre: 'Cuts move from the kick to the snare to the hi-hat',
     phrase:
-      'The picture swaps on every kick. When the hi-hat gets busy, the cuts follow it, for 2 bars at most. Then they go back to the kick for at least 12.',
+      'Each sequence opens with a cut on every kick. Then the cuts move to the snare, then to the hi-hat, so the edit speeds up towards the end. The next sequence starts again on the kick.',
   },
   {
     cle: 'break',
@@ -629,25 +633,26 @@ function plansTient(place) {
 }
 const simTag = (mesure) => Math.floor((((mesure % SIM_MESURES) + SIM_MESURES) % SIM_MESURES) / 2) % 4;
 const kickEn = (i) => i % 4 === 0;
-const hatEn = (mesure, i) => (mesure < 2 ? i % 4 === 2 : i % 2 === 0);
-const suitEn = (mesure) => (mesure >= 2 && mesure < 4 ? 'hihat' : 'kick');
+const snareEn = (i) => i % 8 === 4;
+const hatEn = (mesure, i) => i % 2 === 0;
+const suitEn = (mesure) => (mesure < 4 ? 'kick' : mesure < 6 ? 'snare' : 'hihat');
 function simCoupe(q) {
   q = ((q % SIM_PAS) + SIM_PAS) % SIM_PAS;
   const mesure = q >> 4,
     pas = q & 15;
   const ligne = (f) => Array.from({ length: 16 }, (_, i) => (f(i) ? 'x' : '.')).join('');
-  const frappe = (m, i) => (suitEn(m) === 'kick' ? kickEn(i) : hatEn(m, i));
+  const frappe = (m, i) => (({ kick: kickEn, snare: snareEn })[suitEn(m)] ?? ((j) => hatEn(m, j)))(i);
   let coupes = 0;
   for (let k = 0; k <= q; k++) if (frappe(k >> 4, k & 15)) coupes++;
   return {
     mesure,
     pas,
     kick: ligne(kickEn),
+    snare: ligne(snareEn),
     hat: ligne((i) => hatEn(mesure, i)),
     suit: suitEn(mesure),
     coupe: frappe(mesure, pas),
     image: coupes % 2,
-    hatFranc: mesure >= 2,
   };
 }
 function simBreak(mesure) {
@@ -2263,6 +2268,7 @@ async function demarrer() {
             'div',
             { class: 'puces declencheur' },
             h('span', { class: 'puce', 'data-d': 'kick', text: 'Kick' }),
+            h('span', { class: 'puce', 'data-d': 'snare', text: 'Snare' }),
             h('span', { class: 'puce', 'data-d': 'hihat', text: 'Hi-hat' }),
           ),
           h('p', { class: 'discret sejour' }),
@@ -2624,11 +2630,12 @@ async function demarrer() {
         {
           class: 'grille16 r-grille',
           role: 'img',
-          'aria-label': 'Kick and hi-hat on the 16 steps of the bar',
+          'aria-label': 'Kick, snare and hi-hat on the 16 steps of the bar',
         },
         h('span'),
         Array.from({ length: 16 }, (_, i) => h('span', { class: 't', text: i % 4 === 0 ? i / 4 + 1 : '' })),
         ligne2('Kick', 'kick'),
+        ligne2('Snare', 'snare'),
         ligne2('Hi-hat', 'hihat'),
       );
       const t = tuile('r-coupe-ecran');
@@ -2641,23 +2648,24 @@ async function demarrer() {
           const s = simCoupe(q);
           grille.querySelectorAll('.c').forEach((c) => {
             const i = Number(c.dataset.i),
-              row = c.dataset.l === 'kick' ? s.kick : s.hat;
+              row = { kick: s.kick, snare: s.snare }[c.dataset.l] ?? s.hat;
             c.classList.toggle('x', row[i] === 'x');
             c.classList.toggle('suivi', c.dataset.l === s.suit);
             c.classList.toggle('curseur', i === s.pas);
           });
           grille.querySelectorAll('.lab').forEach((l) => l.classList.toggle('suivi', l.dataset.l === s.suit));
           poser(t, imgs[s.image], s.image ? 'y' : 'x');
-          lu.maj(
-            s.suit === 'kick' ? 'Kick' : 'Hi-hat',
-            s.suit === 'kick' ? '4 cuts per bar' : '8 cuts per bar',
-            s.suit === 'hihat',
-          );
-          return s.mesure < 2
-            ? `Bar ${s.mesure + 1}: the hi-hat is light, so every kick is a cut.`
-            : s.mesure < 4
-              ? `Bar ${s.mesure + 1}: the hi-hat gets busy. The cuts follow it, twice per beat.`
-              : `Bar ${s.mesure + 1}: 2 bars are up. Back to the kick, even with the hi-hat still busy.`;
+          const quoi = {
+            kick: ['Kick', '4 cuts per bar'],
+            snare: ['Snare', '2 cuts per bar'],
+            hihat: ['Hi-hat', '8 cuts per bar'],
+          }[s.suit];
+          lu.maj(quoi[0], quoi[1], s.suit === 'hihat');
+          return s.mesure < 4
+            ? `Bar ${s.mesure + 1} of 8: the sequence opens on the kick.`
+            : s.mesure < 6
+              ? `Bar ${s.mesure + 1} of 8: the cuts move to the snare.`
+              : `Bar ${s.mesure + 1} of 8: the hi-hat closes the sequence, twice per beat.`;
         },
       };
     },

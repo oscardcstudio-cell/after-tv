@@ -33,6 +33,7 @@ FILM_PART_MAX = 0.02
 _ROMAINS = {'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii'}
 SCREENS_PAR_MESURE = 3
 COUPS_PAR_MESURE = 4
+COUPS_PAR_DECLENCHEUR = {'kick': 4, 'snare': 2, 'hihat': 8}
 BREAK_COLOR = 2
 SUSPENSION_COLOR = 4
 HYPER_COLOR = 5
@@ -769,11 +770,11 @@ class LiveMode:
     def _pas_dominante(self) -> list:
         dom = self.colonne_dominante()
         satellites = [c for c in self.columns if c != dom]
-        par_temps = 2 if self.trigger == 'hihat' else 1
-        mesure = COUPS_PAR_MESURE * par_temps
+        mesure = COUPS_PAR_DECLENCHEUR.get(self.trigger, COUPS_PAR_MESURE)
+        par_temps = mesure / COUPS_PAR_MESURE
         bloc_mesures = DOMINANTE_BLOC_MESURES // 2 if par_temps == 2 else DOMINANTE_BLOC_MESURES
         r = max(1, min(int(self.hold_max), RESPIRATION_VISIBLE_MAX))
-        base_court = SATELLITE_TEMPS * par_temps
+        base_court = max(1, int(SATELLITE_TEMPS * par_temps))
         court = base_court * r
 
         def satellite(i):

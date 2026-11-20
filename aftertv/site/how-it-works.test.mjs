@@ -199,7 +199,7 @@ test("les règles qui jouent viennent de l'état, les autres dorment", () => {
   assert.match(r.V41, /8 s/);
   assert.equal(r.V42, 'L5 just left, the others stayed');
   assert.equal(r.V46, 'the loops on screen share shape square');
-  assert.equal(r.V59, 'cuts fall on the hi-hat');
+  assert.equal(r.V98, 'cuts fall on the hi-hat');
   assert.equal(r.V68, 'new dominant loop: L7');
   assert.equal(r.V71, 'the rhythm just turned to broken beat');
   assert.ok(r.V72 && r.V85 && r.V74);
@@ -353,10 +353,11 @@ test('étape 11, V68 · V42 : x tient, une seule loop change à la fois, la plus
   );
   assert.deepEqual([0, 1, 2, 3, 4, 5, 6, 7].map(simTag), [0, 0, 1, 1, 2, 2, 3, 3]);
 });
-test("étape 11, V59 : le charleston mène 2 mesures au plus, puis le kick revient alors qu'il est franc", () => {
+test('étape 11, V98 : chaque séquence coupe sur le kick, puis la caisse claire, puis le charleston', () => {
   const suit = Array.from({ length: SIM_MESURES }, (_, m) => simCoupe(m * 16).suit);
-  assert.deepEqual(suit, ['kick', 'kick', 'hihat', 'hihat', 'kick', 'kick', 'kick', 'kick']);
-  assert.ok(simCoupe(5 * 16).hatFranc, 'le charleston est encore franc quand le kick reprend');
+  assert.deepEqual(suit, ['kick', 'kick', 'kick', 'kick', 'snare', 'snare', 'hihat', 'hihat']);
+  assert.equal(simCoupe(4 * 16 + 4).coupe, true, 'la caisse claire coupe sur le temps 2');
+  assert.equal(simCoupe(4 * 16).coupe, false, 'pas de coupe sur le kick pendant la caisse claire');
   const a = simCoupe(0),
     b = simCoupe(1);
   assert.equal(a.coupe, true);

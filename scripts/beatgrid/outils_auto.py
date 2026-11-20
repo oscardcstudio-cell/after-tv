@@ -1,7 +1,7 @@
 import random
 from dataclasses import dataclass
 TEMPS_PAR_MESURE = 4
-OUTILS = {'suspension': True, 'hyper': True, 'ecrans': True, 'rafale': True, 'declencheur': True, 'respiration': True, 'reperes': True, 'masque': True, 'dosage': True, 'strobe': True, 'plans': True}
+OUTILS = {'suspension': True, 'hyper': True, 'ecrans': True, 'rafale': True, 'declencheur': True, 'respiration': True, 'reperes': True, 'masque': True, 'dosage': True, 'strobe': True, 'plans': True, 'trails': True}
 PASSAGE_MESURES = 8
 SUSPENSION_DROP_APRES_MESURES = 1
 SUSPENSION_MIN_TEMPS = 2.0
@@ -22,17 +22,23 @@ RAFALE_MESURES = 2
 RAFALE_PHRASE_MESURES = 8
 RAFALE_DROP_APRES = 6
 RAFALE_BREAK_APRES = 16
-HATS_FRANCS = 1.5
+SEQUENCE_MESURES_LENT = 16
+SEQUENCE_MESURES_RAPIDE = 8
+TEMPO_RAPIDE = 128
 HATS_RARES = 0.75
-HIHAT_TIENT_MESURES = 2
-HIHAT_REPOS_MESURES = 12
+CAISSES_RARES = 0.25
+TRAILS_DROP_LONG = 32
+TRAILS_PHRASE = 16
+TRAILS_AVANT = 2
+TRAILS_MONTE = (0.5, 0.8)
+TRAILS_BREAK_MESURES = 2
 RESPIRATION = {'house': 2}
 RESPIRATION_DEFAUT = 1
 RESPIRATION_DOUBLE_APRES_MESURES = 16
 CHANCE_MASQUE = 1 / 3
 DOSAGE_MASQUE = 0.7
 STROBE_CRAN = 2
-NEUTRE = {'rafale': False, 'masque': False, 'dosage': 1.0, 'strobe': 0, 'reperes': True, 'plans': False}
+NEUTRE = {'rafale': False, 'masque': False, 'dosage': 1.0, 'strobe': 0, 'reperes': True, 'plans': False, 'trails': 0.0}
 
 @dataclass
 class Contexte:
@@ -47,9 +53,11 @@ class Contexte:
     dosage: float = 1.0
     strobe: int = 0
     plans: bool = False
+    trails: float = 0.0
     style: str = 'tout'
     tempo: float | None = None
     hats: float | None = None
+    caisses: float | None = None
     partie: str | None = None
     kick_manque: bool | None = None
     plein: bool | None = None
@@ -88,8 +96,11 @@ class Pilote:
         self._montee_faite = False
         self._ecrans = 2
         self._masque = False
-        self._declencheur_m: int | None = None
         self._avant_rafale: int | None = None
+        self._trails_pari: int | None = None
+        self._trails_fin: int | None = None
+        self._trails_drop = 0
+        self.paris = {'justes': 0, 'faux': 0, 'imprevus': 0}
         self._ecrans_reste: int | None = None
         self._hyper_repos: int | None = None
         self._rafale_fin: int | None = None
@@ -120,7 +131,7 @@ class Pilote:
         if c.mode == 'one_shot':
             return []
         ordres: list = []
-        self._charleston_expire(c, ordres)
+        self._trails(c, ordres)
         if self._suspension_du_kick(c, ordres):
             return ordres
         if c.mode != 'drop':
@@ -191,6 +202,8 @@ class Pilote:
         self._mode_depuis = c.index
         if c.mode in ('drop', 'break'):
             self._pose = None
+        if c.mode == 'break' and avant != 'break' and (self._drop_depuis is not None):
+            self._trails_drop = (c.index - self._drop_depuis) // TEMPS_PAR_MESURE
         if c.mode == 'drop':
             revient = avant is not None and avant == self._detour and (self._detour_retour == 'drop')
             if not revient or self._drop_depuis is None:
@@ -235,6 +248,8 @@ class Pilote:
         return False
 
     def _hors_drop(self, c: Contexte, ordres: list) -> None:
+        if c.mode == 'break':
+            self._vouloir(ordres, 'declencheur', 'kick', c.declencheur, 'le break : la séquence suivante repart du kick')
         for outil in ('rafale', 'masque', 'dosage', 'strobe'):
             if outil == 'rafale' and c.mode == 'break' and self.actifs['rafale']:
                 continue
@@ -253,10 +268,48 @@ class Pilote:
             self._detour_fin = c.index + HYPER_MONTEE_MAX_MESURES * TEMPS_PAR_MESURE
             ordres.append(Ordre('hyper', 'jouer', 'hyper', "la montée : hyper jusqu'au drop"))
 
-    def _charleston_expire(self, c: Contexte, ordres: list) -> None:
-        if self.actifs['declencheur'] and self._voulu.get('declencheur') == 'hihat' and (self._declencheur_m is not None) and (c.index - self._declencheur_m >= HIHAT_TIENT_MESURES * TEMPS_PAR_MESURE):
-            self._vouloir(ordres, 'declencheur', 'kick', c.declencheur, f"le charleston a tenu {HIHAT_TIENT_MESURES} mesures : retour au kick, sinon c'est trop intense")
-            self._declencheur_m = c.index
+    def _trails(self, c: Contexte, ordres: list) -> None:
+        if not self.actifs['trails']:
+            return
+        compte = lambda: f"{self.paris['justes']} paris justes sur {self.paris['justes'] + self.paris['faux']}"
+        if c.mode == 'break':
+            if self._trails_fin is None and self._mode_depuis == c.index:
+                if self._trails_pari is not None:
+                    self.paris['justes'] += 1
+                    pourquoi = f'le break est là : pari juste ({compte()})'
+                elif self._trails_drop >= TRAILS_DROP_LONG:
+                    self.paris['imprevus'] += 1
+                    pourquoi = f'break après {self._trails_drop} mesures de drop, pas vu venir : traînées quand même'
+                else:
+                    return
+                self._trails_pari = None
+                self._trails_fin = c.index + TRAILS_BREAK_MESURES * TEMPS_PAR_MESURE
+                self._voulu['trails'] = TRAILS_MONTE[-1]
+                ordres.append(Ordre('trails', 'regler', TRAILS_MONTE[-1], pourquoi))
+            elif self._trails_fin is not None and c.index >= self._trails_fin:
+                self._trails_fin = None
+                self._vouloir(ordres, 'trails', 0.0, c.trails, "les traînées s'effacent : le break s'installe")
+            return
+        if self._trails_fin is not None:
+            self._trails_fin = None
+            self._vouloir(ordres, 'trails', 0.0, c.trails, 'le break est fini')
+        if c.mode != 'drop' or self._drop_depuis is None:
+            return
+        depuis = c.index - self._drop_depuis
+        if depuis % TEMPS_PAR_MESURE:
+            return
+        m = depuis // TEMPS_PAR_MESURE
+        pos = m % TRAILS_PHRASE
+        if self._trails_pari is not None and pos == 0:
+            self._trails_pari = None
+            self.paris['faux'] += 1
+            self._vouloir(ordres, 'trails', 0.0, c.trails, f'pas de break, le drop continue : pari faux ({compte()})')
+            return
+        if m >= TRAILS_DROP_LONG and pos >= TRAILS_PHRASE - TRAILS_AVANT:
+            if self._trails_pari is None:
+                self._trails_pari = c.index
+            niveau = TRAILS_MONTE[min(pos - (TRAILS_PHRASE - TRAILS_AVANT), len(TRAILS_MONTE) - 1)]
+            self._vouloir(ordres, 'trails', niveau, c.trails, f'{m} mesures de drop, fin de phrase : je parie sur un break long, les traînées montent')
 
     def _garde_fou(self, c: Contexte, ordres: list) -> None:
         if self._pose != c.mode or self._detour == c.mode or self._mode_depuis is None:
@@ -323,22 +376,24 @@ class Pilote:
             ordres.append(Ordre('ecrans', 'regler', cible, pourquoi))
 
     def _choisir_declencheur(self, c: Contexte, m: int, ordres: list) -> None:
-        if not self.actifs['declencheur'] or c.hats is None:
+        if not self.actifs['declencheur']:
             return
-        depuis = None if self._declencheur_m is None else (c.index - self._declencheur_m) // TEMPS_PAR_MESURE
-        if self._voulu.get('declencheur') == 'hihat':
-            if c.hats <= HATS_RARES:
-                voulu, raison = ('kick', f'peu de charleston ({c.hats:.1f} par temps) : retour au kick')
-            else:
-                return
-        elif c.hats >= HATS_FRANCS and (depuis is None or depuis >= HIHAT_REPOS_MESURES):
-            voulu, raison = ('hihat', f'charleston franc ({c.hats:.1f} par temps) : le montage le suit {HIHAT_TIENT_MESURES} mesures')
+        rapide = c.style == 'techno' or (c.tempo or 0) >= TEMPO_RAPIDE
+        longueur = SEQUENCE_MESURES_RAPIDE if rapide else SEQUENCE_MESURES_LENT
+        pos = m % longueur
+        n = pos + 1
+        quoi = f"mesure {n}/{longueur} de la séquence ({('montage rapide' if rapide else 'montage posé')})"
+        if pos < longueur // 2:
+            voulu, raison = ('kick', f'{quoi} : les coupes tombent sur le kick')
+        elif pos < 3 * longueur // 4:
+            voulu, raison = ('snare', f'{quoi} : les coupes passent sur la caisse claire')
         else:
-            return
-        avant = len(ordres)
+            voulu, raison = ('hihat', f'{quoi} : les coupes passent sur le charleston')
+        if voulu == 'hihat' and c.hats is not None and (c.hats <= HATS_RARES):
+            voulu, raison = ('snare', f'{quoi} : pas de charleston entendu, la caisse claire reste')
+        if voulu == 'snare' and c.caisses is not None and (c.caisses <= CAISSES_RARES):
+            voulu, raison = ('kick', f'{quoi} : pas de caisse claire entendue, le kick reste')
         self._vouloir(ordres, 'declencheur', voulu, c.declencheur, raison)
-        if len(ordres) > avant:
-            self._declencheur_m = c.index
 
     def _vouloir(self, ordres: list, outil: str, voulu, actuel, pourquoi: str) -> None:
         if not self.actifs.get(outil) or voulu == self._voulu.get(outil, NEUTRE.get(outil)):

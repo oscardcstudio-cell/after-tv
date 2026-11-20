@@ -173,6 +173,24 @@
       body.trou #vhs {
         visibility: hidden;
       }
+      #trails {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 18;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 700ms ease;
+      }
+      #trails.on {
+        opacity: 1;
+      }
+      body.silence #trails,
+      body.trou #trails {
+        visibility: hidden;
+      }
       #ecoute {
         display: none;
       }
@@ -1230,6 +1248,7 @@
       import { lireReglages } from './reglages.js';
       import { parametreSur, estLocalHote, adresseSure } from './adresses.js';
       import { vhsPossible } from './vhs.js';
+      import { creerTrails } from './trails.js';
       const q = new URLSearchParams(location.search);
       const config = await fetch('config.json', { cache: 'no-store' })
         .then((r) => (r.ok ? r.json() : {}))
@@ -1819,6 +1838,7 @@
       const REJOUE_ATTENTE_MS = 2e3;
       let origineEtat = 'dashboard';
       let silenceVisiteur = false;
+      let trails = null;
       function recois(e, secours = false, origine = 'dashboard') {
         if (!e || typeof e !== 'object') return;
         if (!suitDashboard && origine !== 'visiteur') return;
@@ -1836,6 +1856,11 @@
           document.body.classList.add('direct');
         }
         document.body.classList.toggle('silence', e.silence === true);
+        const niveauTrails = Number(e.outils?.trails) || 0;
+        if (niveauTrails > 0 || trails) {
+          trails ??= creerTrails({ couches: () => window.afterTV.couchesVhs() });
+          trails.regler(niveauTrails);
+        }
         if (origine === 'visiteur' && silenceVisiteur) document.body.classList.add('silence');
         const trou = e.autopilot && e.son?.ecoute?.silence === true ? e.son.ecoute.silence_depuis : null;
         if (trou == null) document.body.classList.remove('trou');
@@ -2073,6 +2098,7 @@
         dosage: 'Dosage',
         strobe: 'Strobe',
         plans: 'Plans longs',
+        trails: 'Traînées',
       };
       function gestesAuto(o) {
         const auto = o && o.auto;
@@ -2226,9 +2252,10 @@
         pV45: 'source : {source}',
         pV51: 'style entendu : {style}',
         pV52: '{nom} arrive après {apres} : une de tes paires',
-        pV59: 'les coupes tombent sur {sur}',
-        pV59kick: 'le kick',
-        pV59hat: 'le charleston',
+        pV98: 'les coupes tombent sur {sur}',
+        pV98kick: 'le kick',
+        pV98snare: 'la caisse claire',
+        pV98hat: 'le charleston',
         pV68: 'loop dominante : {nom}',
         pV68change: 'loop dominante : {nom}, elle vient de changer',
         pV71rythme: 'le rythme vient de passer à {vers}',
@@ -2266,11 +2293,11 @@
           date: '2026-11-12',
         },
         {
-          n: 'V59',
-          titre: 'Kick ou hi-hat en autopilot',
+          n: 'V98',
+          titre: 'Kick, puis caisse claire, puis charleston',
           regle:
-            'Les coupes suivent le hi-hat quand le charleston est franc, 2 mesures au plus, puis reviennent au kick pour 12 mesures au moins.',
-          date: '2026-11-12',
+            "Chaque séquence du drop coupe d'abord sur le kick (la première moitié), puis sur la caisse claire (le quart suivant), puis sur le charleston (le dernier quart). Montage rapide : séquences de 8 mesures, sinon 16. Un break remet au kick.",
+          date: '2026-11-19',
         },
         {
           n: 'V68',
@@ -2860,7 +2887,9 @@
         const lp = paireDe(e.lien, dernierPlan);
         if (lp) r.V52 = lib('pV52', { nom: lp.nom, apres: lp.apres });
         if (o.declencheur)
-          r.V59 = lib('pV59', { sur: lib(o.declencheur === 'hihat' ? 'pV59hat' : 'pV59kick') });
+          r.V98 = lib('pV98', {
+            sur: lib({ hihat: 'pV98hat', snare: 'pV98snare' }[o.declencheur] || 'pV98kick'),
+          });
         if (o.dominante != null || cx.recente('changer'))
           r.V68 = lib(cx.recente('changer') ? 'pV68change' : 'pV68', { nom: nomDominante(e, cx) });
         if (cx.chRecent) r.V71 = lib('pV71rythme', { vers: f.motif_change.vers });
