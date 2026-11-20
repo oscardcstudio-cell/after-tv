@@ -3317,10 +3317,10 @@
         return t.includes('<script') ? `${t.length}:${h}` : null;
       };
       const peutRecharger = () => {
-        if (document.visibilityState === 'hidden') return true;
         const i = window.__interface;
         if (!i || i.phase() === 'entree') return true;
-        return !document.fullscreenElement && !window.__visiteur?.source?.();
+        if (window.__visiteur?.source?.()) return false;
+        return document.visibilityState === 'hidden' || !document.fullscreenElement;
       };
       const versionChargee = await signature().catch(() => null);
       let nouvelleVersion = false;

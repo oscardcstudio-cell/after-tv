@@ -23,6 +23,7 @@ const T = {
   pasDeSon:
     'No sound shared. Tick "Share system audio" or "Share tab audio" in the share dialog, then try again.',
   reessayer: 'Try again',
+  partageRate: 'The browser could not capture computer sound this time.',
   nonSupporte:
     'This browser cannot capture computer sound. Intergalactic FM plays right here, or the microphone listens to the room.',
   nonSupporteMicro: 'Use the microphone',
@@ -205,6 +206,7 @@ function installerVisiteur(api) {
   let erreur = null;
   let relanceRadio = null,
     relanceInfos = null;
+  let retourRadio = null;
   let infos = null;
   let etatTitre = null;
   let reconnu = null;
@@ -339,6 +341,7 @@ function installerVisiteur(api) {
   function lancer(src, { n, depuis = 'panneau' } = {}) {
     clearTimeout(relanceRadio);
     relanceRadio = null;
+    if (depuis === 'panneau') retourRadio = src !== 'radio' && source === 'radio' ? radioN : null;
     if (depuis !== 'auto') erreur = null;
     if (src !== 'tab') fermerLecteur();
     if (src === 'radio') {
@@ -553,11 +556,22 @@ function installerVisiteur(api) {
       majTout();
       return;
     }
+    const reprendreRadio = () => {
+      const r = depuis === 'panneau' ? retourRadio : null;
+      retourRadio = null;
+      if (!r) return;
+      if (erreur?.texte) {
+        api.avis?.(erreur.texte);
+        erreur = null;
+      }
+      lancer('radio', { n: r, depuis: 'auto' });
+    };
     if (code === 'refuse' && src === 'system') {
       if (depuis === 'entree') {
         api.revenir();
         entreeNormale();
       }
+      reprendreRadio();
       majTout();
       return;
     }
@@ -580,9 +594,15 @@ function installerVisiteur(api) {
         texte: T.microBloque,
         actions: [{ texte: T.reessayer, action: () => choisir('mic') }, radio],
       };
+    } else if (src === 'system') {
+      erreur = {
+        texte: T.partageRate,
+        actions: [{ texte: T.reessayer, action: () => choisir('system') }, radio, micro],
+      };
     } else {
       console.warn('échec sans message', e);
     }
+    reprendreRadio();
     if (depuis === 'entree' && api.phase() !== 'entree') api.revenir();
     if (api.phase() === 'entree') montrerErreurEntree();
     majTout();
