@@ -461,7 +461,7 @@ const REGLES = [
     n: 'V98',
     titre: 'Kick, then snare, then hi-hat',
     regle:
-      'Each sequence of a drop cuts on the kick first (the first half), then on the snare (the next quarter), then on the hi-hat (the last quarter). A fast edit runs 8-bar sequences, a slower one 16. A break goes back to the kick.',
+      'A whole drop, or a whole break, is one sequence. It opens on the kick (8 bars, 4 in a fast edit), then the snare takes over. On the last 2 bars of each 16-bar phrase the autopilot bets the end is near and cuts on the hi-hat; if the music goes on, the snare comes back.',
   },
   {
     n: 'V99',
@@ -583,7 +583,7 @@ const VITRINE = [
     onglet: 'Kick, snare, hi‑hat',
     titre: 'Cuts move from the kick to the snare to the hi-hat',
     phrase:
-      'Each sequence opens with a cut on every kick. Then the cuts move to the snare, then to the hi-hat, so the edit speeds up towards the end. The next sequence starts again on the kick.',
+      'Each drop or break opens with a cut on every kick. Then the cuts move to the snare, and to the hi-hat when the end seems near, so the edit speeds up before the change. The next drop or break starts again on the kick.',
   },
   {
     cle: 'break',

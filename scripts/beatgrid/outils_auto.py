@@ -22,8 +22,10 @@ RAFALE_MESURES = 2
 RAFALE_PHRASE_MESURES = 8
 RAFALE_DROP_APRES = 6
 RAFALE_BREAK_APRES = 16
-SEQUENCE_MESURES_LENT = 16
-SEQUENCE_MESURES_RAPIDE = 8
+SEQUENCE_KICK_LENT = 8
+SEQUENCE_KICK_RAPIDE = 4
+SEQUENCE_PHRASE = 16
+SEQUENCE_FIN = 2
 TEMPO_RAPIDE = 128
 HATS_RARES = 0.75
 CAISSES_RARES = 0.25
@@ -248,8 +250,10 @@ class Pilote:
         return False
 
     def _hors_drop(self, c: Contexte, ordres: list) -> None:
-        if c.mode == 'break':
-            self._vouloir(ordres, 'declencheur', 'kick', c.declencheur, 'le break : la séquence suivante repart du kick')
+        if c.mode == 'break' and self._mode_depuis is not None:
+            depuis = c.index - self._mode_depuis
+            if depuis % TEMPS_PAR_MESURE == 0:
+                self._choisir_declencheur(c, depuis // TEMPS_PAR_MESURE, ordres)
         for outil in ('rafale', 'masque', 'dosage', 'strobe'):
             if outil == 'rafale' and c.mode == 'break' and self.actifs['rafale']:
                 continue
@@ -379,16 +383,16 @@ class Pilote:
         if not self.actifs['declencheur']:
             return
         rapide = c.style == 'techno' or (c.tempo or 0) >= TEMPO_RAPIDE
-        longueur = SEQUENCE_MESURES_RAPIDE if rapide else SEQUENCE_MESURES_LENT
-        pos = m % longueur
-        n = pos + 1
-        quoi = f"mesure {n}/{longueur} de la séquence ({('montage rapide' if rapide else 'montage posé')})"
-        if pos < longueur // 2:
-            voulu, raison = ('kick', f'{quoi} : les coupes tombent sur le kick')
-        elif pos < 3 * longueur // 4:
-            voulu, raison = ('snare', f'{quoi} : les coupes passent sur la caisse claire')
+        kick = SEQUENCE_KICK_RAPIDE if rapide else SEQUENCE_KICK_LENT
+        pos = m % SEQUENCE_PHRASE
+        nom = 'du drop' if c.mode == 'drop' else 'du break'
+        quoi = f"mesure {m + 1} {nom} ({('montage rapide' if rapide else 'montage posé')})"
+        if m < kick:
+            voulu, raison = ('kick', f"{quoi} : la séquence s'ouvre sur le kick")
+        elif pos >= SEQUENCE_PHRASE - SEQUENCE_FIN:
+            voulu, raison = ('hihat', f'{quoi} : fin de phrase, je parie sur la fin, les coupes passent sur le charleston')
         else:
-            voulu, raison = ('hihat', f'{quoi} : les coupes passent sur le charleston')
+            voulu, raison = ('snare', f'{quoi} : les coupes tombent sur la caisse claire')
         if voulu == 'hihat' and c.hats is not None and (c.hats <= HATS_RARES):
             voulu, raison = ('snare', f'{quoi} : pas de charleston entendu, la caisse claire reste')
         if voulu == 'snare' and c.caisses is not None and (c.caisses <= CAISSES_RARES):
