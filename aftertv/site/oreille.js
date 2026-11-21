@@ -35,8 +35,11 @@ const STATUTS = {
 };
 function montrerTitre(t) {
   const p = $('titre');
-  p.hidden = !t?.actif && !t?.morceau;
-  if (p.hidden) return;
+  p.hidden = false;
+  if (!t?.actif && !t?.morceau) {
+    p.textContent = 'titre (Shazam, AudD) : en attente de l’écoute';
+    return;
+  }
   const m = t.morceau;
   const tete = m
     ? `titre : ${[m.artiste, m.titre].filter(Boolean).join(' — ')} (${m.source === 'audd' ? 'AudD' : 'Shazam'})`
@@ -53,6 +56,7 @@ const titre = creerTitre({
   suivi: montrerTitre,
 });
 window.__oreille.titre = titre;
+montrerTitre(titre.etat());
 const AVEC_TITRE = ['system', 'tab', 'mic', 'file', 'url'];
 moteur.on('etat', (m) => {
   etat(TEXTES_ETAT[m.phase]?.(m) ?? m.phase);
