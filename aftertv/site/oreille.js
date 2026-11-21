@@ -1,6 +1,7 @@
 import { index, plan } from './miroir.js';
 import { creerMoteur, lireConfig } from './moteur.js';
 import { parametreSur } from './adresses.js';
+import { creerTitre } from './titre.js';
 const $ = (id) => document.getElementById(id);
 const PARAMS = new URLSearchParams(location.search);
 const LOCAL = ['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname);
@@ -22,8 +23,44 @@ const TEXTES_ETAT = {
   error: (m) => `Erreur : ${m.message}`,
   loading: (m) => (m.quoi === 'oreille' ? 'Chargement de l’oreille…' : 'Chargement du cerveau Python…'),
 };
+const STATUTS = {
+  attente: 'pas encore essayé',
+  cherche: 'cherche…',
+  trouve: 'trouvé',
+  rate: 'pas trouvé',
+  plafond: 'plafond atteint',
+  erreur: 'erreur',
+  repos: 'déjà essayé',
+  inutile: 'pas besoin',
+};
+function montrerTitre(t) {
+  const p = $('titre');
+  p.hidden = !t?.actif && !t?.morceau;
+  if (p.hidden) return;
+  const m = t.morceau;
+  const tete = m
+    ? `titre : ${[m.artiste, m.titre].filter(Boolean).join(' — ')} (${m.source === 'audd' ? 'AudD' : 'Shazam'})`
+    : t.silence
+      ? 'titre : en silence, rien à chercher'
+      : 'titre : pas encore trouvé';
+  const f = (nom, x) => `${nom} ${STATUTS[x.statut] ?? x.statut}${x.essais ? ` (${x.essais})` : ''}`;
+  p.textContent = `${tete} · ${f('Shazam', t.shazam)} · ${f('AudD', t.audd)}`;
+}
+const titre = creerTitre({
+  extrait: (sec) => moteur.extrait?.(sec) || null,
+  silencieux: () => moteur.silenceDepuis > 4e3,
+  quand: (mo) => moteur.morceau?.(mo),
+  suivi: montrerTitre,
+});
+window.__oreille.titre = titre;
+const AVEC_TITRE = ['system', 'tab', 'mic', 'file', 'url'];
 moteur.on('etat', (m) => {
   etat(TEXTES_ETAT[m.phase]?.(m) ?? m.phase);
+  if (m.phase === 'listening') {
+    if (AVEC_TITRE.includes(m.source)) titre.demarrer();
+    else titre.arreter();
+  }
+  if (m.phase === 'stopped' || m.phase === 'error') titre.arreter();
   if (m.phase === 'listening' || (m.phase === 'loading' && m.quoi === 'oreille'))
     $('go').textContent = 'Arrêter';
   if (m.phase === 'stopped' || m.phase === 'error') {
@@ -110,10 +147,23 @@ function lancer() {
   $('demarrer').hidden = true;
   $('go').textContent = 'Arrêter';
   const sorte = $('source').value;
+  let micro = null;
+  if (sorte === 'device') {
+    try {
+      micro =
+        navigator.mediaDevices?.getUserMedia?.({
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        }) || null;
+      micro?.catch(() => {});
+    } catch {
+      micro = null;
+    }
+  }
   moteur
     .demarrer(SOURCES[sorte] ?? sorte, {
       file: $('fichier').files[0],
       url: `/sons/${encodeURIComponent($('morceau').value)}`,
+      ...(micro ? { micro } : {}),
     })
     .catch((e) => console.error(e));
 }

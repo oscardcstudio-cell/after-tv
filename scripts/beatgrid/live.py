@@ -20,6 +20,7 @@ CHANCE_SUPERPOSITION = 0.3
 VOISINAGE = 10
 CHANCE_AILLEURS = 0.2
 ECART_VUES = 1
+THEME_MIN_LOOPS = 8
 INVITEE_PART = 1 / 10
 NEUVES_PAR_MINUTE = 3
 NEUVES_SOLO_PAR_MINUTE = 2
@@ -1204,6 +1205,10 @@ class LiveMode:
         tous = list(free)
         if ailleurs and regle == 'theme':
             libres = [c for c in free if self.themes.get(c) not in ailleurs]
+            if libres and self.solo_kind is None and self.chapitres_auto and self.genres:
+                au_palier = lambda cs: [c for c in cs if self.palier(c) == self.palier_vise]
+                if 0 < len(au_palier(libres)) < THEME_MIN_LOOPS <= len(au_palier(free)):
+                    libres = []
             free = libres or free
 
         def _fraiches(candidats, reference):
@@ -1257,6 +1262,8 @@ class LiveMode:
         if famille is not None and random.random() < CHANCE_COMPO:
             theme = self.themes.get(repere)
             memes = _fraiches([c for c in free if _compo(c) == famille and self.themes.get(c) != theme], mini)
+            if memes and len(memes) < THEME_MIN_LOOPS <= len(_fraiches([c for c in free if _compo(c) == famille], mini)):
+                memes = []
             if memes:
                 return _prendre(memes)
             memes = _fraiches([c for c in free if _compo(c) == famille], mini)
