@@ -1995,9 +1995,11 @@
         const loops = qualite.forcee && hd.length >= 4 ? hd : tousLesLoops;
         if (montage && loops.length !== montage.loops.length) montage = new MontageSeul(loops, { mood, bpm });
       }
+      const HD_CASSEES = new Set(['ea944a8a45bac7d7']);
       async function demarre() {
         const m = await (await fetch(base)).json();
         const loops = m.loops || [];
+        for (const l of loops) if (HD_CASSEES.has(l.id)) delete l.video_hd;
         tousLesLoops = loops;
         idx = index(loops);
         montage = new MontageSeul(loops, { mood, bpm });
