@@ -470,6 +470,12 @@ const REGLES = [
       'After 32 bars of a drop, the autopilot bets on a break. On the last 2 bars of each 16-bar phrase the trails rise, to half and then to full. If the break lands, they hold its first 2 bars and fade out. If the drop goes on, they switch off. A break the autopilot did not see coming still gets them for 2 bars. A drop under 32 bars has none.',
   },
   {
+    n: 'V100',
+    titre: 'No handful of loops at every start',
+    regle:
+      'Two loops from the same folder may share the screen when another folder would only offer a handful of loops. Otherwise every session opened on the same few faces.',
+  },
+  {
     n: 'V68',
     titre: 'One dominant loop per sequence',
     regle:
@@ -2672,10 +2678,10 @@ async function demarrer() {
           }[s.suit];
           lu.maj(quoi[0], quoi[1], s.suit === 'hihat');
           return s.mesure < 4
-            ? `Bar ${s.mesure + 1} of 8: the sequence opens on the kick.`
+            ? `Bar ${s.mesure + 1}: the drop opens on the kick (4 bars in a fast edit).`
             : s.mesure < 6
-              ? `Bar ${s.mesure + 1} of 8: the cuts move to the snare.`
-              : `Bar ${s.mesure + 1} of 8: the hi-hat closes the sequence, twice per beat.`;
+              ? `Bar ${s.mesure + 1}: the snare takes over for the rest of the drop.`
+              : `Bar ${s.mesure + 1}: end of the phrase, the autopilot bets the drop is ending and cuts on the hi-hat.`;
         },
       };
     },
