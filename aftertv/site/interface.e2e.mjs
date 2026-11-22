@@ -531,9 +531,9 @@ try {
     await capture(page, 'boutons-1920');
     await page.waitForTimeout(3800);
     verifie(!(await visible(page, '#bouton-panneau')), "les boutons s'effacent après 3 s");
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(450);
-    verifie(await visible(page, '#panneau'), "P : le panneau s'ouvre");
+    verifie(await visible(page, '#panneau'), "O : le panneau s'ouvre");
     verifie(
       (await page.textContent('#panneau-titre')) === 'A - T' &&
         (await visible(page, "[data-section='maintenant']")),
@@ -624,7 +624,7 @@ try {
     await pret(page);
     await page.getByRole('button', { name: 'Enter', exact: true }).click();
     await page.waitForFunction(() => window.__interface.phase() === 'lecture', null, { timeout: 5e3 });
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(450);
     verifie(
       !(await visible(page, "[data-section='maintenant']")) &&
@@ -770,7 +770,7 @@ try {
       );
       await page.click('#entree-principal');
       await page.waitForFunction(() => window.__interface.phase() === 'lecture', null, { timeout: 5e3 });
-      await page.keyboard.press('p');
+      await page.keyboard.press('o');
       await page.waitForTimeout(500);
       const r = await page.locator('#panneau').boundingBox();
       verifie(r.width === w && Math.abs(r.y + r.height - h) < 2, '375 : le panneau est une feuille en bas');
@@ -936,7 +936,7 @@ try {
       await page.evaluate(() => !window.__visiteur.direct()),
       'veille + radio : la page ne se croit pas en direct (ses propres états)',
     );
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(500);
     await page.waitForFunction(() => document.querySelector("[data-section='ecoute'] .ligne-morceau"), null, {
       timeout: 3e3,
@@ -1059,7 +1059,7 @@ try {
     await page.evaluate(() => document.activeElement?.blur());
     await page.keyboard.press(' ');
     verifie((await page.evaluate(() => window.__faux.taps)) === 2, 'Espace : tap');
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(400);
     verifie(
       !(await page.$("[data-section='tags']")) &&
@@ -1110,7 +1110,7 @@ try {
       await page.evaluate(() => window.__visiteur.source() === 'radio' && window.__faux.arrets === 0),
       'le dashboard publie : la radio continue',
     );
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(400);
     verifie(
       !(await visible(page, "[data-section='tap']")) &&
@@ -1134,7 +1134,7 @@ try {
     );
     await page.click('#entree-principal');
     await page.waitForFunction(() => window.__interface.phase() === 'lecture', null, { timeout: 5e3 });
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(400);
     await cliqueSource(page, 'radio-2');
     await page.waitForTimeout(300);
@@ -1192,7 +1192,7 @@ try {
       (await page.evaluate(() => window.__interface.phase())) !== 'entree',
       "radio muette : la vidéo continue (pas de retour à l'entrée)",
     );
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(400);
     verifie(
       (await page.textContent('#erreur-source')).startsWith(
@@ -1236,7 +1236,7 @@ try {
       null,
       { timeout: 8e3 },
     );
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForFunction(() => document.querySelector("[data-section='ecoute'] .ligne-morceau"), null, {
       timeout: 3e3,
     });
@@ -1319,7 +1319,7 @@ try {
     await page.mouse.move(700, 450);
     await page.waitForTimeout(4e3);
     verifie(!(await visible(page, '#bouton-plein')), "l'icône plein écran s'efface avec les autres");
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(400);
     verifie(
       !(await page.$("#panneau button[aria-label='Toggle fullscreen']")),
@@ -1370,6 +1370,20 @@ try {
       (await visible(page, '#info-lecture')) && (await page.textContent('#info-titre')) === 'A - T',
       'en direct, au mouvement : le titre du dashboard',
     );
+    const modes = await page.evaluate(() => [
+      document.getElementById('mode').textContent.trim(),
+      document.getElementById('info-mode').textContent.trim(),
+    ]);
+    verifie(
+      modes[0] !== '' && modes[1] === modes[0],
+      `au mouvement : le mode joué à côté du titre (${modes[1]} / ${modes[0]})`,
+    );
+    await page.keyboard.press('p');
+    await page.waitForTimeout(3800);
+    verifie(await visible(page, '#info-lecture'), 'P : le titre et le mode restent affichés sans mouvement');
+    await page.keyboard.press('p');
+    await page.waitForTimeout(3800);
+    verifie(!(await visible(page, '#info-lecture')), "P encore : ils s'effacent de nouveau avec les boutons");
     await page.evaluate(() => {
       const b = document.getElementById('bpm');
       b.classList.add('bat');
@@ -1536,7 +1550,7 @@ try {
         (await page.textContent('#info-titre')) !== 'A - T',
         "public : l'info de lecture ne montre pas #titre du dashboard",
       );
-      await page.keyboard.press('p');
+      await page.keyboard.press('o');
       await page.waitForTimeout(450);
       verifie(
         (await page.textContent('#panneau-titre')) === '' &&
@@ -1585,7 +1599,7 @@ try {
       );
       await page.click('#entree-principal');
       await page.waitForFunction(() => window.__interface.phase() === 'lecture', null, { timeout: 5e3 });
-      await page.keyboard.press('p');
+      await page.keyboard.press('o');
       await page.waitForTimeout(450);
       verifie(
         (await page.textContent('#panneau-titre')) === 'A - T',
@@ -1687,7 +1701,7 @@ try {
       (await page.evaluate(() => window.__faux.demarres.join())) === 'radio3',
       'entrée : la chaîne cliquée joue (The Dream Machine)',
     );
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(500);
     const sources = await page.$$eval("[data-source^='radio-']", (bs) =>
       bs.map((b) => ({
@@ -1745,7 +1759,7 @@ try {
     );
     await page.getByRole('button', { name: 'Enter', exact: true }).click();
     await page.waitForFunction(() => window.__interface.phase() === 'lecture', null, { timeout: 5e3 });
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(400);
     verifie(
       (await page.getAttribute("[data-source='radio-3']", 'data-derniere')) === 'true',
@@ -2297,7 +2311,7 @@ try {
       await page.evaluate(() => window.__marque === 1 && !!document.fullscreenElement),
       'nouvelle version, lecture + radio + plein écran : pas de rechargement',
     );
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(400);
     await cliqueSource(page, 'off');
     await page.waitForTimeout(1200);
@@ -2328,7 +2342,7 @@ try {
       await page.evaluate(() => window.__audios.length >= 1 && !window.__visiteur.moteurPret()),
       'Off pendant le chargement : la radio du clic joue, moteur pas prêt',
     );
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(400);
     await cliqueSource(page, 'off');
     liberer();
@@ -2358,7 +2372,7 @@ try {
     );
     await page.click('#entree-principal');
     await page.waitForFunction(() => window.__interface.phase() === 'lecture', null, { timeout: 5e3 });
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(400);
     const vus = await page.evaluate(() =>
       [...document.querySelectorAll('#sources [data-source]')]
@@ -2378,7 +2392,7 @@ try {
       await page.evaluate(() => !window.__visiteur.moteurCharge()),
       'veille, lecture, panneau fermé : Pyodide ne se charge pas',
     );
-    await page.keyboard.press('p');
+    await page.keyboard.press('o');
     await page.waitForTimeout(400);
     verifie(
       await page.evaluate(() => window.__visiteur.moteurCharge()),

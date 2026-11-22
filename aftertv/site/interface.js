@@ -302,6 +302,7 @@ function construireBoutons() {
     'div',
     { id: 'info-lecture', class: 'flottant', 'aria-hidden': 'true', hidden: true },
     el('span', { id: 'info-point' }),
+    el('span', { id: 'info-mode' }),
     el('span', { id: 'info-titre' }),
   );
   ligneAvis = el('p', { id: 'avis', role: 'status', hidden: true });
@@ -344,7 +345,33 @@ function battre() {
   clearTimeout(finBat);
   finBat = setTimeout(() => p.classList.remove('bat'), 120);
 }
+const CLE_TITRE_FIXE = 'aftertv-titre-fixe';
+function poserTitreFixe(on) {
+  document.documentElement.classList.toggle('titre-fixe', on);
+  try {
+    if (on) localStorage.setItem(CLE_TITRE_FIXE, '1');
+    else localStorage.removeItem(CLE_TITRE_FIXE);
+  } catch {}
+}
+function basculerTitreFixe() {
+  poserTitreFixe(!document.documentElement.classList.contains('titre-fixe'));
+}
+function suivreModeInfo() {
+  const src = $('mode'),
+    puce = $('info-mode');
+  if (!src || !puce) return;
+  const copie = () => {
+    const t = src.textContent.trim();
+    if (puce.textContent !== t) puce.textContent = t;
+  };
+  new MutationObserver(copie).observe(src, { childList: true, characterData: true, subtree: true });
+  copie();
+}
 function brancherInfo() {
+  suivreModeInfo();
+  try {
+    if (localStorage.getItem(CLE_TITRE_FIXE) === '1') document.documentElement.classList.add('titre-fixe');
+  } catch {}
   const bpm = $('bpm');
   if (bpm)
     new MutationObserver(() => {
@@ -477,9 +504,12 @@ function ecouterGestes() {
     if (e.key === 'f' || e.key === 'F') {
       e.preventDefault();
       basculerPleinEcran();
-    } else if (e.key === 'p' || e.key === 'P') {
+    } else if (e.key === 'o' || e.key === 'O') {
       e.preventDefault();
       basculerPanneau();
+    } else if (e.key === 'p' || e.key === 'P') {
+      e.preventDefault();
+      basculerTitreFixe();
     }
   });
 }

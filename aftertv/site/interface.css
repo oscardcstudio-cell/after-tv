@@ -901,6 +901,18 @@ html.panneau-ouvert .flottant {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+html.titre-fixe.lecture #info-lecture {
+  opacity: 1;
+  visibility: visible;
+}
+#info-mode {
+  flex: none;
+  color: var(--ink);
+  font-weight: 600;
+}
+#info-mode:empty {
+  display: none;
+}
 #info-titre:empty {
   display: none;
 }
