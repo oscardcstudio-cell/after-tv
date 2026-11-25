@@ -821,7 +821,9 @@ function installerVisiteur(api) {
   setInterval(() => {
     if (api.phase() === 'entree') lireVedette();
   }, 6e4);
+  const testMutant = new URLSearchParams(location.search).has('mutant');
   function sourceParDefaut() {
+    if (testMutant && !direct()) return { src: 'radio', n: MUTANT.n };
     if (!telephone || direct()) return null;
     const r = lireReglages();
     return r.source === 'radio' ? { src: 'radio', n: r.radio } : { src: 'mic' };
