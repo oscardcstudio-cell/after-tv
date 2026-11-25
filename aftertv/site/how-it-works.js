@@ -2,6 +2,7 @@ import { index as indexer, trouve } from './miroir.js';
 import * as M from './montage.js';
 import { libelleTag, libelleFamille, VALEURS } from './tags-en.js';
 import { parametreSur } from './adresses.js';
+import { composerCouches } from './vhs.js';
 const PARTIES = {
   intro: 'Intro',
   couplet: 'Verse',
@@ -1399,12 +1400,33 @@ async function demarrer() {
     const frais = g && Number.isFinite(v.t) && Number.isFinite(g.g.t) && v.t - g.g.t < 12;
     texte(meta(3), frais ? g.en.quoi : '');
     const ecran = aLEcran().filter((x) => Number(x.c.opacite ?? 1) > 0.05);
-    bloc(val(4), ecran.map((x) => x.loop.id).join(), () =>
-      h(
-        'div',
-        { class: 'vignettes' },
-        ecran.map((x) => img(x.loop, x.loop.nom)),
-      ),
+    if (!val(4).__direct) {
+      val(4).__direct = true;
+      const toile = h('canvas', {
+        class: 'ecran-direct',
+        width: 640,
+        height: 360,
+        'aria-label': 'The film, live',
+      });
+      val(4).append(toile, h('div', { class: 'vignettes' }));
+      const ctx = toile.getContext('2d');
+      const image = () => {
+        requestAnimationFrame(image);
+        if (document.hidden) return;
+        const api = filmApi();
+        let ok = false;
+        try {
+          ok = !!api?.couchesVhs && composerCouches(ctx, api.couchesVhs(), toile.width, toile.height);
+        } catch {
+          ok = false;
+        }
+        toile.hidden = !ok;
+        val(4).querySelector('.vignettes').hidden = ok;
+      };
+      requestAnimationFrame(image);
+    }
+    bloc(val(4).querySelector('.vignettes'), ecran.map((x) => x.loop.id).join(), () =>
+      ecran.map((x) => img(x.loop, x.loop.nom)),
     );
     texte(meta(4), S.e ? `${v.ecrans || 0} layer${v.ecrans === 1 ? '' : 's'}` : '');
     texte(
