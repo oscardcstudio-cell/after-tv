@@ -1,5 +1,15 @@
 import { lireReglages, ecrireReglages, coupesRapidesEffectives } from './reglages.js';
-import { RADIOS, infosRadio, flux, nomRadio, SITE, ligneMorceau } from './radio.js';
+import {
+  RADIOS,
+  MUTANT,
+  NUMEROS,
+  estMutant,
+  infosRadio,
+  flux,
+  nomRadio,
+  SITE,
+  ligneMorceau,
+} from './radio.js';
 import { demarrerAudience } from './audience.js';
 import { lecteurDuLien, SERVICES } from './liens.js';
 import { creerLecteur } from './lecteur.js';
@@ -29,12 +39,18 @@ const T = {
   nonSupporteMicro: 'Use the microphone',
   microBloque:
     'The microphone is blocked. Allow it in the address bar of your browser, or listen to Intergalactic FM instead.',
-  radioMuette: 'Intergalactic FM is not answering. It tries again every 15 seconds.',
+  radioMuette: 'The radio is not answering. It tries again every 15 seconds.',
   autreSource: 'Choose another source',
   moteurEchec: 'The edit could not load, so the film does not follow the sound.',
   maintenant: 'Now playing',
   ecoute: 'Listening',
   surIgfm: (c) => `${c} on Intergalactic FM`,
+  mutantLieu: 'Live from Tbilisi',
+  mutantEcouter: 'Listen',
+  mutantLigne: 'Mutant Radio, Tbilisi',
+  creditMutant: 'Mutant Radio plays courtesy of ',
+  microEntree: 'Microphone',
+  microNote: 'Hears the room, less precise',
   lienIgfm: 'intergalactic.fm',
   tap: 'Tap',
   un: '1',
@@ -345,7 +361,7 @@ function installerVisiteur(api) {
     if (depuis !== 'auto') erreur = null;
     if (src !== 'tab') fermerLecteur();
     if (src === 'radio') {
-      radioN = [1, 2, 3].includes(n) ? n : radioN;
+      radioN = NUMEROS.includes(n) ? n : radioN;
       ecrireReglages({ ...lireReglages(), radio: radioN });
     }
     source = src;
@@ -754,6 +770,32 @@ function installerVisiteur(api) {
     RADIOS.map((r) => ({ ...r, derniere: r.n === radioN, action: () => quand(r.n) }));
   const radiosEntree = () => ({ libelle: T.radio, chaines: chaines(), credit: creditRadio() });
   const boutonMicro = () => ({ texte: T.micro, action: () => choisir('mic') });
+  const microEntree = () => ({ texte: T.microEntree, note: T.microNote, action: () => choisir('mic') });
+  const vedette = () => ({
+    n: MUTANT.n,
+    nom: MUTANT.nom,
+    lieu: T.mutantLieu,
+    ecouter: T.mutantEcouter,
+    enCours: vedetteEnCours,
+    action: () => choisir('radio', { n: MUTANT.n }),
+    credit: el(
+      'p',
+      { class: 'credit-radio credit-vedette' },
+      T.creditMutant,
+      el('a', { href: MUTANT.site, target: '_blank', rel: 'noopener' }, MUTANT.lienTexte),
+    ),
+  });
+  let vedetteEnCours = '';
+  async function lireVedette() {
+    const r = await infosRadio(MUTANT.n);
+    vedetteEnCours = ligneMorceau(r?.morceau) || '';
+    const p = $('vedette-en-cours');
+    if (p && p.textContent !== vedetteEnCours) p.textContent = vedetteEnCours;
+  }
+  lireVedette();
+  setInterval(() => {
+    if (api.phase() === 'entree') lireVedette();
+  }, 6e4);
   function sourceParDefaut() {
     if (!telephone || direct()) return null;
     const r = lireReglages();
@@ -779,7 +821,7 @@ function installerVisiteur(api) {
     principalPartage = !direct() && peutCapter;
     if (direct()) {
       variante = 'direct';
-      api.definirEntree({ principal: boutonVoir(), radios: radiosEntree() });
+      api.definirEntree({ principal: boutonVoir(), radios: radiosEntree(), vedette: vedette() });
     } else if (peutCapter) {
       variante = 'veille';
       api.definirEntree({
@@ -787,7 +829,9 @@ function installerVisiteur(api) {
         principal: { texte: T.ordinateur, action: () => choisir('system') },
         lien: boutonLien(),
         radios: radiosEntree(),
-        secondaires: [boutonMicro(), boutonVoir()],
+        vedette: vedette(),
+        micro: microEntree(),
+        secondaires: [boutonVoir()],
         aide: T.aidePartage,
       });
     } else {
@@ -796,7 +840,9 @@ function installerVisiteur(api) {
         invitation: T.invitationSansCapture,
         principal: false,
         radios: radiosEntree(),
-        secondaires: [boutonMicro(), boutonVoir()],
+        vedette: vedette(),
+        micro: microEntree(),
+        secondaires: [boutonVoir()],
         aide: T.aideSansCapture,
       });
     }
@@ -978,12 +1024,19 @@ function installerVisiteur(api) {
         if (l2) lignes.push(el('p', { class: 'ligne-annee' }, l2));
       }
       lignes.push(
-        el(
-          'p',
-          { class: 'ligne-chaine' },
-          T.surIgfm(nomRadio(radioN)),
-          el('a', { href: SITE, target: '_blank', rel: 'noopener' }, T.lienIgfm),
-        ),
+        estMutant(radioN)
+          ? el(
+              'p',
+              { class: 'ligne-chaine' },
+              T.mutantLigne,
+              el('a', { href: MUTANT.site, target: '_blank', rel: 'noopener' }, MUTANT.lienTexte),
+            )
+          : el(
+              'p',
+              { class: 'ligne-chaine' },
+              T.surIgfm(nomRadio(radioN)),
+              el('a', { href: SITE, target: '_blank', rel: 'noopener' }, T.lienIgfm),
+            ),
       );
     } else if (source) {
       if (reconnu) {
@@ -1042,6 +1095,21 @@ function installerVisiteur(api) {
         );
         box.append(sys2, boutonLien(), ligneLecteur());
       }
+      autres.push(
+        el(
+          'button',
+          {
+            class: 'source source-radio source-mutant',
+            type: 'button',
+            role: 'radio',
+            'data-source': `radio-${MUTANT.n}`,
+            'aria-checked': 'false',
+            onclick: () => choisir('radio', { n: MUTANT.n }),
+          },
+          el('span', { class: 'source-nom' }, el('span', {}, MUTANT.nom)),
+          el('span', { class: 'meta' }, MUTANT.lieu),
+        ),
+      );
       for (const r of RADIOS) {
         autres.push(
           el(
@@ -1295,7 +1363,7 @@ function installerVisiteur(api) {
   api.definirInfo(() => {
     if (source === 'radio') {
       const m = infos?.morceau;
-      return ligneMorceau(m) || T.surIgfm(nomRadio(radioN));
+      return ligneMorceau(m) || (estMutant(radioN) ? T.mutantLigne : T.surIgfm(nomRadio(radioN)));
     }
     if (direct()) return ($('titre')?.textContent || '').trim().replace(/\s+—\s+/g, ' - ');
     if (source && reconnu) return ligneMorceau(reconnu) || texteEcoute();

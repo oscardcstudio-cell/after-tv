@@ -23,7 +23,7 @@ function nettoyer(brut) {
     coupesRapides: typeof o.coupesRapides === 'boolean' ? o.coupesRapides : DEFAUTS.coupesRapides,
     sd: typeof o.sd === 'boolean' ? o.sd : DEFAUTS.sd,
     source: SOURCES.includes(o.source) ? o.source : DEFAUTS.source,
-    radio: [1, 2, 3].includes(o.radio) ? o.radio : DEFAUTS.radio,
+    radio: [1, 2, 3, 4].includes(o.radio) ? o.radio : DEFAUTS.radio,
   };
 }
 function lireReglages(stockage = stockageDuNavigateur()) {

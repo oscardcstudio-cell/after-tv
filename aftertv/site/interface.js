@@ -106,8 +106,10 @@ function construireEntree() {
       el(
         'div',
         { id: 'entree-actions' },
+        el('div', { id: 'entree-vedette', hidden: true }),
         el('button', { id: 'entree-principal', class: 'primaire', type: 'button' }),
         el('div', { id: 'entree-lien', hidden: true }),
+        el('div', { id: 'entree-micro', hidden: true }),
         el('div', { id: 'entree-radios', hidden: true }),
         el('div', { id: 'entree-secondaires' }),
         el('p', { id: 'entree-aide' }),
@@ -127,7 +129,47 @@ function definirEntree({
   erreur = false,
   radios = null,
   lien = null,
+  vedette = null,
+  micro = null,
 } = {}) {
+  const zv = $('entree-vedette');
+  zv.hidden = !vedette;
+  zv.replaceChildren(
+    ...(vedette
+      ? [
+          el(
+            'button',
+            {
+              class: 'vedette',
+              type: 'button',
+              'data-radio': vedette.n,
+              onclick: vedette.action,
+              'aria-describedby': 'vedette-en-cours',
+            },
+            el('span', { class: 'vedette-lieu' }, vedette.lieu),
+            el('span', { class: 'vedette-nom' }, vedette.nom),
+            el('span', { class: 'vedette-en-cours', id: 'vedette-en-cours' }, vedette.enCours || ''),
+            el('span', { class: 'vedette-ecouter', 'aria-hidden': 'true' }, vedette.ecouter, ' →'),
+          ),
+          vedette.credit ?? null,
+          el('p', { class: 'ou', 'aria-hidden': 'true' }, 'or'),
+        ]
+      : []),
+  );
+  const zm = $('entree-micro');
+  zm.hidden = !micro;
+  zm.replaceChildren(
+    ...(micro
+      ? [
+          el(
+            'button',
+            { class: 'coller micro', type: 'button', onclick: micro.action },
+            el('span', { class: 'coller-texte' }, micro.texte),
+            el('span', { class: 'meta' }, micro.note || ''),
+          ),
+        ]
+      : []),
+  );
   const inv = $('entree-invitation');
   inv.textContent = invitation;
   inv.hidden = !invitation;

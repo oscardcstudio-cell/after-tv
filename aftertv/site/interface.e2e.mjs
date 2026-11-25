@@ -307,6 +307,15 @@ async function nouvellePage(viewport = { width: 1280, height: 720 }, script = nu
   const ctx = await navigateur.newContext({ viewport });
   await ctx.addInitScript(ESPION);
   if (script) await ctx.addInitScript(script);
+  await ctx.route('https://api.radioking.io/**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ artist: null, title: 'Test show' }),
+    }),
+  );
+  await ctx.route('https://listen.radioking.com/**', (route) => route.abort());
   const page = await ctx.newPage();
   page.on('pageerror', (e) => erreurs.push(String(e)));
   return { ctx, page };
@@ -804,7 +813,21 @@ try {
             );
           }),
       ),
-      `${w}x${h} : tout tient dans l'écran`,
+      `${w}x${h} : tout tient dans l'écran ${await page.evaluate(() =>
+        JSON.stringify(
+          [...document.querySelectorAll('#entree *')]
+            .filter((e) => {
+              const r = e.getBoundingClientRect();
+              return r.width && (r.bottom > innerHeight + 1 || r.right > innerWidth + 1 || r.left < -1);
+            })
+            .slice(0, 4)
+            .map((e) => [
+              e.id || e.className,
+              Math.round(e.getBoundingClientRect().bottom),
+              Math.round(e.getBoundingClientRect().right),
+            ]),
+        ),
+      )}`,
     );
     await capture(page, `entree-${w}x${h}`);
     if (w === 375) {
@@ -905,7 +928,13 @@ try {
       "Focus 2 : sans capture, les trois chaînes d'abord (pas de bouton principal)",
     );
     verifie(
-      (await page.textContent('#entree-secondaires')).startsWith('Use the microphone (less precise)'),
+      (await visible(page, "#entree-vedette .vedette[data-radio='4']")) &&
+        /Mutant Radio/i.test(await page.textContent('#entree-vedette')),
+      'Focus 2 : Mutant Radio en grand en tête',
+    );
+    verifie(
+      (await visible(page, '#entree-micro .coller')) &&
+        (await page.textContent('#entree-micro')).startsWith('Microphone'),
       'Focus 2 : puis le micro',
     );
     verifie(
@@ -1229,7 +1258,7 @@ try {
     );
     await page.click(CHAINE(1));
     await page.waitForFunction(
-      () => window.__visiteur.erreur()?.texte?.startsWith('Intergalactic FM is not answering'),
+      () => window.__visiteur.erreur()?.texte?.startsWith('The radio is not answering'),
       null,
       { timeout: 5e3 },
     );
@@ -1241,7 +1270,7 @@ try {
     await page.waitForTimeout(400);
     verifie(
       (await page.textContent('#erreur-source')).startsWith(
-        'Intergalactic FM is not answering. It tries again every 15 seconds.',
+        'The radio is not answering. It tries again every 15 seconds.',
       ),
       'radio muette : le message dans Source',
     );
@@ -1321,7 +1350,7 @@ try {
     });
     await page.goto(PAGE);
     await pret(page);
-    await page.click('#entree-secondaires >> text=Use the microphone (less precise)');
+    await page.click('#entree-micro .coller');
     await page.waitForFunction(
       () => document.getElementById('entree-invitation').textContent.startsWith('The microphone is blocked'),
       null,
@@ -1748,7 +1777,11 @@ try {
     );
     await page.keyboard.press('o');
     await page.waitForTimeout(500);
-    const sources = await page.$$eval("[data-source^='radio-']", (bs) =>
+    verifie(
+      (await page.$eval("[data-source='radio-4']", (b) => b.textContent)) === 'Mutant RadioTbilisi',
+      'Source : Mutant Radio en tête des radios',
+    );
+    const sources = await page.$$eval("[data-source^='radio-']:not([data-source='radio-4'])", (bs) =>
       bs.map((b) => ({
         t: b.textContent,
         f: getComputedStyle(b.querySelector('img')).filter,
@@ -2426,7 +2459,7 @@ try {
         .join(),
     );
     verifie(
-      vus === 'radio-1,radio-2,radio-3,off',
+      vus === 'radio-4,radio-1,radio-2,radio-3,off',
       `en direct, Source : les radios et Off seulement (${vus})`,
     );
     await page.keyboard.press('Escape');

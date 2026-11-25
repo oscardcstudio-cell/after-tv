@@ -5,8 +5,19 @@ const RADIOS = Object.freeze([
 ]);
 const STATUT = 'https://radio.intergalactic.fm/status-json.xsl';
 const SITE = 'https://www.intergalactic.fm';
-const flux = (n) => `https://radio.intergalactic.fm/${n}`;
-const nomRadio = (n) => RADIOS.find((r) => r.n === n)?.nom ?? RADIOS[0].nom;
+const MUTANT = Object.freeze({
+  n: 4,
+  nom: 'Mutant Radio',
+  lieu: 'Tbilisi',
+  site: 'https://www.mutantradio.net',
+  lienTexte: 'mutantradio.net',
+  flux: 'https://listen.radioking.com/radio/282820/stream/328621',
+  statut: 'https://api.radioking.io/widget/radio/mutant-radio/track/current',
+});
+const NUMEROS = Object.freeze([1, 2, 3, 4]);
+const estMutant = (n) => n === MUTANT.n;
+const flux = (n) => (estMutant(n) ? MUTANT.flux : `https://radio.intergalactic.fm/${n}`);
+const nomRadio = (n) => (estMutant(n) ? MUTANT.nom : (RADIOS.find((r) => r.n === n)?.nom ?? RADIOS[0].nom));
 const net = (s) => {
   const t = typeof s === 'string' ? s.trim() : '';
   return t || null;
@@ -33,6 +44,26 @@ async function infosRadio(n, fetcher = globalThis.fetch) {
   try {
     const signal =
       typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(8e3) : void 0;
+    if (estMutant(n)) {
+      const r2 = await fetcher(MUTANT.statut, { cache: 'no-store', signal });
+      if (!r2 || r2.ok === false) return { radio, morceau: null };
+      const j2 = await r2.json();
+      const titre2 = net(j2?.title),
+        artiste = net(j2?.artist);
+      if (!titre2 && !artiste) return { radio, morceau: null };
+      return {
+        radio,
+        morceau: {
+          artiste,
+          titre: titre2,
+          album: net(j2?.album),
+          label: null,
+          annee: null,
+          pays: null,
+          brut: [artiste, titre2].filter(Boolean).join(' - '),
+        },
+      };
+    }
     const r = await fetcher(STATUT, { cache: 'no-store', signal });
     if (!r || r.ok === false) return { radio, morceau: null };
     const j = await r.json();
@@ -54,4 +85,16 @@ function ligneMorceau(m) {
   if (m.brut && !m.brut.includes('|')) return m.brut;
   return m.album || null;
 }
-export { RADIOS, SITE, STATUT, flux, infosRadio, ligneMorceau, lireTitre, nomRadio };
+export {
+  MUTANT,
+  NUMEROS,
+  RADIOS,
+  SITE,
+  STATUT,
+  estMutant,
+  flux,
+  infosRadio,
+  ligneMorceau,
+  lireTitre,
+  nomRadio,
+};

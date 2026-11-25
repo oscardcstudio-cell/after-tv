@@ -38,7 +38,12 @@ const TAP_GARDES = 8;
 const TAP_MIN = 4;
 const TAP_TIENT_S = 30;
 const TAP_ECART_OREILLE = 0.15;
-const RADIOS = { 1: 'Cybernetic Broadcasting System', 2: 'Disco Fetish', 3: 'The Dream Machine' };
+const RADIOS = {
+  1: 'Cybernetic Broadcasting System',
+  2: 'Disco Fetish',
+  3: 'The Dream Machine',
+  4: 'Mutant Radio',
+};
 const SEUIL_SON = 0.003;
 function niveauRms(d) {
   if (!d || !d.length) return 0;
@@ -50,7 +55,8 @@ function niveauRms(d) {
   }
   return Math.sqrt(s / n);
 }
-const radioAdresse = (n) => `https://radio.intergalactic.fm/${n}`;
+const radioAdresse = (n) =>
+  n === 4 ? 'https://listen.radioking.com/radio/282820/stream/328621' : `https://radio.intergalactic.fm/${n}`;
 const MOODS = ['house', 'techno'];
 function tagsDisponibles(loops, min = 20) {
   const n = new Map();
@@ -347,7 +353,7 @@ async function creerMoteur({ config = {}, params = new URLSearchParams() } = {})
     let radio = null,
       src = null;
     if (source === 'radio') {
-      const n = [1, 2, 3].includes(options.radio) ? options.radio : 1;
+      const n = [1, 2, 3, 4].includes(options.radio) ? options.radio : 1;
       const audio = options.audio && !branches.has(options.audio) ? options.audio : new Audio();
       branches.add(audio);
       if (audio.src !== radioAdresse(n)) {
