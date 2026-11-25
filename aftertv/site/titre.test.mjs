@@ -11,6 +11,8 @@ import {
   RATES_MAX,
   AUDD_REPOS_MS,
   PREMIER_MS,
+  CONFIRME_MS,
+  memeMorceau,
 } from './titre.js';
 test('lireReponse garde artiste et titre, refuse le non trouvé', () => {
   assert.equal(lireReponse({ trouve: false }), null);
@@ -64,6 +66,11 @@ test('un essai envoie l’empreinte au relais et annonce le titre', async (t) =>
   assert.equal(envois.length, 1);
   assert.equal(envois[0][0], '/after-tv/titre');
   assert.equal(envois[0][1].samplems, 1e4);
+  assert.deepEqual(vus, []);
+  t.mock.timers.tick(CONFIRME_MS);
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(envois.length, 2);
   assert.deepEqual(
     vus.map((m) => m && m.titre),
     ['B'],
@@ -131,5 +138,38 @@ test('AudD : seulement après 2 ratés de Shazam, une fois par morceau', async (
   assert.equal(e.audd.statut, 'rate');
   assert.equal(e.audd.essais, 2);
   assert.equal(e.audd.par_jour, 50);
+  tv.arreter();
+});
+test('un faux positif isolé ne remplace pas le titre affiché ; un nouveau titre confirmé, si', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const reponses = ['Bon', 'Bon', 'Faux', 'Bon', 'Suivant', 'Suivant'];
+  const vus = [];
+  const tv = creerTitre({
+    extrait: () => ({ pcm: new Float32Array(10), sr: 48e3 }),
+    signer: async () => ({ uri: 'x', samplems: 1e4 }),
+    fetcher: async (url, o) =>
+      o.method === 'GET'
+        ? { ok: false }
+        : {
+            ok: true,
+            status: 200,
+            json: async () => ({ trouve: true, artiste: 'A', titre: reponses.shift() }),
+          },
+    quand: (m) => vus.push(m && m.titre),
+  });
+  const pas = async (ms) => {
+    t.mock.timers.tick(ms);
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    await new Promise((r) => setImmediate(r));
+  };
+  tv.demarrer();
+  await pas(PREMIER_MS);
+  await pas(CONFIRME_MS);
+  await pas(TROUVE_MS);
+  await pas(CONFIRME_MS);
+  await pas(TROUVE_MS);
+  await pas(CONFIRME_MS);
+  assert.deepEqual(vus, ['Bon', 'Suivant']);
+  assert.ok(memeMorceau({ artiste: 'A', titre: 'B (Radio Edit)' }, { artiste: 'a', titre: 'b' }));
   tv.arreter();
 });

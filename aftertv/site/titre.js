@@ -6,6 +6,7 @@ const PREMIER_MS = 8e3,
   RATES_MAX = 4,
   PAUSE_MS = 12e4;
 const EXTRAIT_S = 10;
+const CONFIRME_MS = 1e4;
 const RELAIS_AUDD = '/after-tv/titre-audd',
   AUDD_APRES = 2,
   AUDD_REPOS_MS = 6e5,
@@ -68,6 +69,18 @@ function versWav(pcm, sr, cible = AUDD_SR) {
   }
   return new Uint8Array(data.buffer);
 }
+const cle = (m) =>
+  [m?.artiste, m?.titre]
+    .map((x) =>
+      String(x ?? '')
+        .toLowerCase()
+        .replace(/\s*[([].*?[)\]]/g, '')
+        .replace(/\s+(feat\.?|ft\.?)\s.*$/, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
+    .join(' - ');
+const memeMorceau = (a, b) => !!a && !!b && cle(a) === cle(b);
 function prochainDelai(trouve, rates) {
   if (trouve) return TROUVE_MS;
   return rates >= RATES_MAX ? PAUSE_MS : RATE_MS;
@@ -87,6 +100,7 @@ function creerTitre({
     actif = false,
     rates = 0,
     courant = null,
+    candidat = null,
     jeton = 0,
     auddLe = -Infinity;
   const vide = () => ({ statut: 'attente', essais: 0, trouves: 0, a: null });
@@ -207,11 +221,16 @@ function creerTitre({
       if (trouve) rates = 0;
     }
     if (trouve && trouve.source !== 'audd') auddLe = -Infinity;
-    if (trouve && (trouve.titre !== courant?.titre || trouve.artiste !== courant?.artiste)) {
+    let attendre = null;
+    if (trouve && memeMorceau(trouve, courant)) candidat = null;
+    else if (trouve && (trouve.source === 'audd' || memeMorceau(trouve, candidat))) {
+      candidat = null;
       courant = trouve;
       quand(courant);
+    } else if (trouve) {
+      candidat = trouve;
+      attendre = CONFIRME_MS;
     } else if (
-      !trouve &&
       courant &&
       rates >= RATES_MAX &&
       !(courant.source === 'audd' && maintenant() - auddLe < AUDD_REPOS_MS)
@@ -219,13 +238,16 @@ function creerTitre({
       courant = null;
       quand(null);
     }
-    plus_tard(prochainDelai(!!trouve, rates));
+    if (!trouve && rates >= 2) candidat = null;
+    etat.candidat = candidat ? { artiste: candidat.artiste, titre: candidat.titre } : null;
+    plus_tard(attendre ?? prochainDelai(!!trouve, rates));
   }
   return {
     demarrer() {
       if (actif) return;
       actif = true;
       rates = 0;
+      candidat = null;
       jeton++;
       etat.actif = true;
       Promise.resolve()
@@ -263,6 +285,7 @@ export {
   AUDD_APRES,
   AUDD_REPOS_MS,
   AUDD_SR,
+  CONFIRME_MS,
   EXTRAIT_S,
   PAUSE_MS,
   PREMIER_MS,
@@ -274,6 +297,7 @@ export {
   TROUVE_MS,
   creerTitre,
   lireReponse,
+  memeMorceau,
   prochainDelai,
   versWav,
 };
