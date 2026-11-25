@@ -1527,6 +1527,9 @@ html.lecture #suggestion-radio p {
   background: var(--ink);
   border-color: var(--ink);
 }
+.lampe[data-etat='rate'] i {
+  border-color: var(--ink);
+}
 .lampe[data-etat='cherche'] i {
   border-color: var(--ink);
   animation: at-lampe 1s steps(2, jump-none) infinite;

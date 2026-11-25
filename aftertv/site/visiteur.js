@@ -192,12 +192,12 @@ function installerVisiteur(api) {
       };
     }
     out.recherche_titre =
-      source === 'radio'
+      source === 'radio' && !estMutant(radioN)
         ? { radio: nomRadio(radioN), morceau: infos?.morceau || null }
         : titreAuto
           ? titreAuto.etat()
           : null;
-    const m = source === 'radio' ? infos?.morceau : reconnu;
+    const m = source === 'radio' && !estMutant(radioN) ? infos?.morceau : reconnu || infos?.morceau;
     if (m && !out.titre) {
       out.titre = m.titre || null;
       out.artiste = m.artiste || null;
@@ -341,7 +341,8 @@ function installerVisiteur(api) {
       if (s.phase === 'listening') {
         ecoute = true;
         erreur = null;
-        if (['system', 'tab', 'mic'].includes(s.source)) titreAuto?.demarrer();
+        if (['system', 'tab', 'mic'].includes(s.source) || (s.source === 'radio' && estMutant(radioN)))
+          titreAuto?.demarrer();
         else titreAuto?.arreter();
         if (['system', 'radio', 'mic'].includes(s.source))
           ecrireReglages({ ...lireReglages(), source: s.source });
@@ -369,6 +370,7 @@ function installerVisiteur(api) {
     tempo = null;
     temps = -1;
     etatTitre = null;
+    reconnu = null;
     moodEntendu = null;
     let promesse;
     if (src === 'radio') {
@@ -1016,7 +1018,7 @@ function installerVisiteur(api) {
     const corps = $('ecoute-corps');
     const lignes = [];
     if (source === 'radio') {
-      const m = infos?.morceau;
+      const m = estMutant(radioN) ? reconnu || infos?.morceau : infos?.morceau;
       if (m) {
         const l1 = ligneMorceau(m);
         if (l1) lignes.push(el('p', { class: 'ligne-morceau' }, l1));
@@ -1269,10 +1271,17 @@ function installerVisiteur(api) {
     const montre = visiteurActif() && ecoute;
     bloc.hidden = !montre;
     if (!montre) return;
-    const radio = source === 'radio';
+    const radio = source === 'radio' && !estMutant(radioN);
     const t = radio ? {} : etatTitre || {};
     const cherche = [t.shazam?.statut, t.audd?.statut].includes('cherche');
-    const st = (f) => (f?.statut === 'trouve' ? 'trouve' : f?.statut === 'cherche' ? 'cherche' : '');
+    const st = (f) =>
+      f?.statut === 'trouve'
+        ? 'trouve'
+        : f?.statut === 'cherche'
+          ? 'cherche'
+          : ['rate', 'erreur', 'plafond'].includes(f?.statut)
+            ? 'rate'
+            : '';
     const morceau = radio ? infos?.morceau : reconnu;
     const styles = radio
       ? [...stylesRadio.genres, ...stylesRadio.styles]
@@ -1342,7 +1351,7 @@ function installerVisiteur(api) {
     if (ici !== jetonInfos || source !== 'radio' || radioN !== n) return;
     infos = r;
     majEcoute();
-    chercherStylesRadio(r?.morceau);
+    if (!estMutant(n)) chercherStylesRadio(r?.morceau);
     relanceInfos = setTimeout(lireInfos, RELANCE_MS);
   }
   function arreterInfos() {
@@ -1362,7 +1371,7 @@ function installerVisiteur(api) {
   });
   api.definirInfo(() => {
     if (source === 'radio') {
-      const m = infos?.morceau;
+      const m = estMutant(radioN) ? reconnu || infos?.morceau : infos?.morceau;
       return ligneMorceau(m) || (estMutant(radioN) ? T.mutantLigne : T.surIgfm(nomRadio(radioN)));
     }
     if (direct()) return ($('titre')?.textContent || '').trim().replace(/\s+—\s+/g, ' - ');
