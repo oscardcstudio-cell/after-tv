@@ -532,6 +532,8 @@ const SECTIONS = [
   { id: 'qualite', construire: sectionQualite },
   { id: 'tv', construire: sectionTv },
   { id: 'apropos', construire: sectionApropos },
+  { id: 'vhs', construire: sectionVhs },
+  { id: 'doc', construire: sectionDoc },
 ];
 function ajouterSection(def, { avant = 'tv' } = {}) {
   const i = SECTIONS.findIndex((s2) => s2.id === avant);
@@ -663,11 +665,43 @@ function sectionQualite() {
   });
   return section('qualite', switchHd.ligne);
 }
+const VHS_MAIN_MS = 3e4;
+let minuteurVhs = null;
+function sectionVhs() {
+  switchVhs = interrupteur({
+    id: 'switch-vhs',
+    libelle: T.vhs,
+    oui: vhsDemande || vhsAuto,
+    quand: (v) => basculeVhs(v, { duree: VHS_MAIN_MS }),
+  });
+  return section('vhs', switchVhs.ligne);
+}
+function sectionDoc() {
+  return section(
+    'doc',
+    el(
+      'p',
+      {},
+      el('a', { href: LIEN_DOC, target: '_blank', rel: 'noopener', 'data-lien': 'doc' }, T.commentCaMarche),
+    ),
+  );
+}
 function majVhs() {
   if (window.afterTV && !window.afterTV.basculeVhs) window.afterTV.basculeVhs = (v) => basculeVhs(v);
   if (!switchVhs) return;
-  switchVhs.ligne.hidden = !window.afterTV?.lirePixels;
-  switchVhs.poser(vhsDemande);
+  const s = switchVhs.ligne.closest('section') || switchVhs.ligne;
+  s.hidden = !window.afterTV?.lirePixels;
+  switchVhs.poser(vhsDemande || vhsAuto);
+}
+function annoncerVhs() {
+  switchVhs?.poser(vhsDemande || vhsAuto);
+  for (const fn of quandVhs) {
+    try {
+      fn(vhsDemande);
+    } catch (e) {
+      console.error(e);
+    }
+  }
 }
 function effetVhs() {
   if (!vhs && window.afterTV?.lirePixels) {
@@ -676,26 +710,27 @@ function effetVhs() {
   return vhs;
 }
 const quandVhs = [];
-async function basculeVhs(v = !vhsDemande) {
+async function basculeVhs(v = !vhsDemande, { duree: duree2 = 0 } = {}) {
+  clearTimeout(minuteurVhs);
+  minuteurVhs = null;
   vhsDemande = !!v;
   switchVhs?.poser(vhsDemande);
   let ok = false;
   if (!vhsDemande) {
-    if (!vhsAuto) effetVhs()?.eteindre();
+    vhsAuto = false;
+    effetVhs()?.eteindre();
   } else {
     ok = !!(await effetVhs()?.allumer());
-    if (!ok) {
-      vhsDemande = false;
-      switchVhs?.poser(false);
-    }
+    if (!ok) vhsDemande = false;
+    else if (duree2 > 0)
+      minuteurVhs = setTimeout(() => {
+        minuteurVhs = null;
+        vhsDemande = false;
+        if (!vhsAuto) effetVhs()?.eteindre();
+        annoncerVhs();
+      }, duree2);
   }
-  for (const fn of quandVhs) {
-    try {
-      fn(vhsDemande);
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  annoncerVhs();
   return ok;
 }
 async function vhsAutomatique(allumer) {
@@ -705,10 +740,12 @@ async function vhsAutomatique(allumer) {
     await e.charger();
     if (!e.assezRapide || vhsDemande) return false;
     vhsAuto = await e.allumer();
+    annoncerVhs();
     return vhsAuto;
   }
   vhsAuto = false;
   if (!vhsDemande) e.eteindre();
+  annoncerVhs();
   return true;
 }
 const hdForce = () => $('btn-hd')?.getAttribute('aria-pressed') === 'true';
@@ -755,11 +792,6 @@ function sectionApropos() {
     'apropos',
     ...T.aproposTexte.map((t) => el('p', {}, t)),
     el('p', { class: 'meta' }, T.volumes),
-    el(
-      'p',
-      {},
-      el('a', { href: LIEN_DOC, target: '_blank', rel: 'noopener', 'data-lien': 'doc' }, T.commentCaMarche),
-    ),
   );
 }
 function construirePanneau() {

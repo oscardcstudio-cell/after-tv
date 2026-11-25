@@ -567,8 +567,17 @@ try {
       'About : le texte du projet, parlé par Rien',
     );
     verifie(
-      (await page.getAttribute("[data-section='apropos'] a[data-lien='doc']", 'href')) === 'how-it-works',
-      'About : lien How it works vers la documentation',
+      (await page.getAttribute("[data-section='doc'] a[data-lien='doc']", 'href')) === 'how-it-works',
+      'fin du volet : lien How it works vers la documentation',
+    );
+    verifie(
+      (await page.evaluate(() =>
+        [...document.querySelectorAll('#panneau-contenu > section')]
+          .slice(-2)
+          .map((x) => x.dataset.section)
+          .join(),
+      )) === 'vhs,doc',
+      'fin du volet : VHS puis How it works',
     );
     await page.click("[data-section='tv'] summary");
     await page.click("[data-section='apropos'] summary");
@@ -667,8 +676,44 @@ try {
       'Quality : pas de bouton plein écran ni de paire HD auto / HD',
     );
     verifie(
-      !(await page.$('#panneau #switch-vhs')) && !(await page.$('#panneau .vhs-discret')),
-      'volet : pas de bouton VHS',
+      (await visible(page, '#panneau #switch-vhs')) &&
+        (await page.getAttribute('#switch-vhs', 'aria-checked')) === 'false',
+      'volet : interrupteur VHS, éteint',
+    );
+    await page.click("[data-section='vhs'] .ligne-switch");
+    await page.waitForFunction(
+      () => {
+        const c = document.getElementById('vhs');
+        return c && !c.hidden;
+      },
+      null,
+      { timeout: 15e3 },
+    );
+    verifie(
+      (await page.getAttribute('#switch-vhs', 'aria-checked')) === 'true',
+      "volet : VHS allumé, l'effet est à l'écran",
+    );
+    await page.click("[data-section='vhs'] .ligne-switch");
+    verifie(
+      (await page.evaluate(() => document.getElementById('vhs').hidden)) &&
+        (await page.getAttribute('#switch-vhs', 'aria-checked')) === 'false',
+      'volet : VHS éteint à la main',
+    );
+    const allume = await page.evaluate(() => window.__interface.basculeVhs(true, { duree: 1500 }));
+    const aussitot = await page.getAttribute('#switch-vhs', 'aria-checked');
+    await page
+      .waitForFunction(
+        () => document.getElementById('switch-vhs').getAttribute('aria-checked') === 'false',
+        null,
+        { timeout: 5e3 },
+      )
+      .catch(() => {});
+    verifie(
+      allume &&
+        aussitot === 'true' &&
+        (await page.getAttribute('#switch-vhs', 'aria-checked')) === 'false' &&
+        (await page.evaluate(() => document.getElementById('vhs').hidden)),
+      `VHS à la main : s'éteint seul au bout du temps (30 s dans le volet) (${allume}, ${aussitot})`,
     );
     verifie(await page.evaluate(() => window.__interface.basculeVhs(true)), "VHS : l'effet s'allume");
     await page.waitForFunction(
@@ -964,7 +1009,7 @@ try {
       [...document.querySelectorAll('#panneau-contenu > section')].map((x) => x.dataset.section).join(),
     );
     verifie(
-      ordre === 'maintenant,ecoute,source,tap,style,qualite,tv,apropos',
+      ordre === 'maintenant,ecoute,source,tap,style,qualite,tv,apropos,vhs,doc',
       `ordre des sections (${ordre})`,
     );
     verifie(
