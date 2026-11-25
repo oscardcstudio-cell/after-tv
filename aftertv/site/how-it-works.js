@@ -1,7 +1,6 @@
 import { index as indexer, trouve } from './miroir.js';
 import * as M from './montage.js';
 import { libelleTag, libelleFamille, VALEURS } from './tags-en.js';
-import { RADIOS } from './radio.js';
 import { parametreSur } from './adresses.js';
 const PARTIES = {
   intro: 'Intro',
@@ -476,6 +475,42 @@ const REGLES = [
       'Two loops from the same folder may share the screen when another folder would only offer a handful of loops. Otherwise every session opened on the same few faces.',
   },
   {
+    n: 'V93',
+    titre: 'Bright loops are brought down',
+    regle:
+      'A loop measured brighter than the target is dimmed toward it, by 28% at most. About 3 loops in 10 are. A dark loop is never brightened: the black is meant.',
+  },
+  {
+    n: 'V94',
+    titre: 'Two loops, each keeps its place',
+    regle:
+      'With two loops on screen, the more contrasted one comes down toward the other, by 20% at most. Added together, both lose a little light and saturation, so the mix does not burn.',
+  },
+  {
+    n: 'V95',
+    titre: 'A small wiggle on the kick',
+    regle:
+      'In a drop or in hyper, one kick in four pushes the picture for one beat: more light, contrast and saturation, the hue turned 8 degrees, then back. At most once every 8 bars, never in a break or a suspension.',
+  },
+  {
+    n: 'V96',
+    titre: 'Loud and fast, more contrast',
+    regle:
+      'In hyper, contrast +20% and saturation +10%. In a drop at 132 BPM or more, contrast +12% and saturation +6%.',
+  },
+  {
+    n: 'V97',
+    titre: 'Hyper also draws from fast drops',
+    regle:
+      'In hyper, the draw takes the hyper loops and also the loops tagged fast, with the same mood and filters as the edit.',
+  },
+  {
+    n: 'V101',
+    titre: 'VHS by hand: 30 seconds',
+    regle:
+      'The VHS switch at the end of the panel holds the effect for 30 seconds, then the automatic rule takes over again: at most once every 15 minutes, on a drop or a break the page is sure of.',
+  },
+  {
     n: 'V68',
     titre: 'One dominant loop per sequence',
     regle:
@@ -519,7 +554,8 @@ const REGLES = [
 const NOMS_SOURCE = {
   system: 'computer sound',
   loopback: 'computer sound',
-  radio: 'Intergalactic FM',
+  tab: 'a pasted link',
+  radio: 'a radio',
   mic: 'the microphone',
 };
 const nomSource = (src) =>
@@ -1384,34 +1420,8 @@ async function demarrer() {
         h(
           'div',
           { class: 'bloc' },
-          titreBloc('Where the sound comes from'),
-          h(
-            'div',
-            { class: 'entrees' },
-            h(
-              'div',
-              { class: 'source', 'data-s': 'system' },
-              h('span', { class: 'titre', text: 'Computer sound' }),
-              h('span', { class: 'discret', text: 'Desktop Chrome or Edge: share a screen with its audio' }),
-            ),
-            h(
-              'div',
-              { class: 'source', 'data-s': 'radio' },
-              h('span', { class: 'titre', text: 'Intergalactic FM' }),
-              h('span', { class: 'discret', text: RADIOS.map((r) => r.nom).join(' · ') }),
-              h(
-                'span',
-                { class: 'radios' },
-                RADIOS.map((r) => h('img', { src: r.logo, alt: r.nom, width: 32, height: 32 })),
-              ),
-            ),
-            h(
-              'div',
-              { class: 'source', 'data-s': 'mic' },
-              h('span', { class: 'titre', text: 'Microphone' }),
-              h('span', { class: 'discret', text: 'hears the room, less precise' }),
-            ),
-          ),
+          titreBloc('The signal on this beat', ''),
+          h('dl', { class: 'rangs signal' }),
           h('p', { class: 'discret src-note' }),
         ),
         h(
@@ -1429,13 +1439,45 @@ async function demarrer() {
       );
     }
     const s = v.source;
-    el.querySelectorAll('.source').forEach((d) =>
-      d.classList.toggle(
-        'on',
-        (d.dataset.s === 'system' && (s === 'system' || s === 'loopback')) ||
-          (d.dataset.s === 'radio' && s === 'radio') ||
-          (d.dataset.s === 'mic' && s != null && !['system', 'loopback', 'radio', 'fichier'].includes(s)),
-      ),
+    const f = v.ecoute || {};
+    const bouge = (k) => (f[k] && f[k] !== 'stable' ? motEn(f[k]) : null);
+    const signal = [
+      ['Key', tonaliteEn(f.tonalite)],
+      ['Chord', accordEn(f.accord)],
+      ['Melody', suiteEn(f.suite)],
+      ['Pitch', motEn(f.hauteur)],
+      ['Brightness', motEn(f.brillance_mot)],
+      [
+        'Filter',
+        f.filtre != null || Number.isFinite(f.filtre_hz)
+          ? [
+              f.filtre_type ? (motEn(f.filtre_type) ?? f.filtre_type) : 'open',
+              Number.isFinite(f.filtre_hz) ? `cutoff ${(f.filtre_hz / 1e3).toFixed(1)} kHz` : '',
+              bouge('filtre') ?? '',
+            ]
+              .filter(Boolean)
+              .join(', ')
+          : null,
+      ],
+      [
+        'Space',
+        f.espace_mot
+          ? `${motEn(f.espace_mot)}${Number.isFinite(f.espace_rt60) ? ` (reverb ${f.espace_rt60.toFixed(1)} s)` : ''}`
+          : null,
+      ],
+      [
+        'Dynamics',
+        f.dynamique_mot
+          ? `${motEn(f.dynamique_mot)}${Number.isFinite(f.dynamique_db) ? ` (${f.dynamique_db.toFixed(1)} dB)` : ''}`
+          : null,
+      ],
+      ['Noise', motEn(f.bruit)],
+    ];
+    bloc(el.querySelector('.rangs.signal'), JSON.stringify(signal), () =>
+      signal.flatMap(([k, w]) => [
+        h('dt', { text: k }),
+        h('dd', { class: w ? null : 'absent', text: w ?? 'not heard yet' }),
+      ]),
     );
     texte(
       el.querySelector('.src-note'),
@@ -1839,7 +1881,6 @@ async function demarrer() {
       ['Grain', motEn(f.grain_mot)],
       ['Space', motEn(f.espace_mot)],
       ['Dynamics', motEn(f.dynamique_mot)],
-      ['Key', tonaliteEn(f.tonalite)],
       ['Voice', voix ?? (f.grain_mot ? 'none' : null)],
       ['Instruments', instr.length ? instr.join(', ') : f.grain_mot ? 'none heard' : null],
     ];
@@ -1880,8 +1921,6 @@ async function demarrer() {
     ]);
     const bouge = (k) => (f[k] && f[k] !== 'stable' ? motEn(f[k]) : null);
     const mesures = [
-      ['Chord', accordEn(f.accord)],
-      ['Notes', suiteEn(f.suite)],
       [
         'Swing',
         f.swing ? `${motEn(f.swing) ?? '–'}${f.swing_pct != null ? ` (${f.swing_pct}%)` : ''}` : null,
