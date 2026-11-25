@@ -1994,3 +1994,89 @@ html.lecture #suggestion-radio p {
     padding-bottom: calc(var(--s4) + env(safe-area-inset-bottom));
   }
 }
+#panneau .retour-bouton {
+  margin-left: auto;
+  margin-right: var(--s2);
+  min-height: 36px;
+  font-size: var(--t-meta);
+  letter-spacing: var(--track-button);
+  text-transform: uppercase;
+}
+#panneau .retour-bouton[aria-expanded='true'] {
+  background: var(--ink);
+  color: #000;
+  border-color: var(--ink);
+}
+#panneau .retour-boite {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3) 0 var(--s4);
+  border-bottom: 1px solid var(--rule);
+}
+#panneau .retour-boite[hidden] {
+  display: none;
+}
+#panneau .retour-boite textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 96px;
+  padding: var(--s2) var(--s3);
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  font: 400 var(--t-body) / 1.4 var(--font);
+}
+#panneau .retour-boite textarea:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+#panneau .retour-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+#panneau .retour-actions .primaire {
+  height: 40px;
+  padding: 0 var(--s5);
+}
+#panneau .retour-message:empty {
+  display: none;
+}
+#consigne-partage {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s5) var(--s6) calc(var(--s5) + env(safe-area-inset-bottom));
+  background: var(--ink);
+  color: #000;
+  font: 500 clamp(18px, 1.4vw + 8px, 26px) / 1.3 var(--font);
+}
+#consigne-partage[hidden] {
+  display: none;
+}
+#consigne-partage p {
+  margin: 0;
+  max-width: 60ch;
+}
+#consigne-partage .fleche-consigne {
+  font-size: 2em;
+  line-height: 1;
+  animation: consigne 1.2s var(--ease-in-out) infinite alternate;
+}
+@keyframes consigne {
+  to {
+    transform: translate(-6px, 6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #consigne-partage .fleche-consigne {
+    animation: none;
+  }
+}

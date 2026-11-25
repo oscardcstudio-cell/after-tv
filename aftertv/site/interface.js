@@ -10,6 +10,13 @@ const T = {
   tourner: 'Turn your phone sideways to watch the film.',
   tournerIcone: 'A phone turning from upright to sideways',
   fermer: 'Close',
+  retour: 'Feedback',
+  retourAide: 'What went wrong? Say what you were doing, the page adds what it was playing.',
+  retourEnvoyer: 'Send',
+  retourAnnuler: 'Cancel',
+  retourMerci: 'Thanks, it is sent.',
+  retourRate: 'It could not be sent. Try again.',
+  retourPlafond: 'Too many reports for now. Try again in an hour.',
   maintenant: 'Now playing',
   style: 'Style',
   house: 'House',
@@ -525,7 +532,13 @@ function ecouterGestes() {
   addEventListener(
     'keydown',
     (e) => {
-      if (phase === 'entree' && !e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1)
+      if (
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        e.key.length === 1 &&
+        (phase === 'entree' || e.target.closest?.('input, textarea'))
+      )
         e.stopImmediatePropagation();
     },
     { capture: true },
@@ -850,6 +863,18 @@ function construirePanneau() {
       'div',
       { class: 'tete-panneau' },
       el('span', { class: 'etiquette' }, T.titre),
+      el(
+        'button',
+        {
+          id: 'retour-bouton',
+          class: 'fantome retour-bouton',
+          type: 'button',
+          'aria-expanded': 'false',
+          'aria-controls': 'retour-boite',
+          onclick: () => basculerRetour(),
+        },
+        T.retour,
+      ),
       el('button', {
         id: 'fermer-panneau',
         class: 'fermer',
@@ -859,6 +884,7 @@ function construirePanneau() {
         onclick: () => fermerPanneau(),
       }),
     ),
+    boiteRetour(),
     contenu,
     el('p', { class: 'meta touches' }, T.touches),
   );
@@ -883,6 +909,95 @@ function construirePanneau() {
   majVhs();
   majPleinEcran();
   premiereSection();
+}
+function boiteRetour() {
+  const champ = el('textarea', {
+    id: 'retour-texte',
+    rows: 4,
+    maxlength: 4e3,
+    placeholder: T.retourAide,
+    'aria-label': T.retourAide,
+    oninput: () => armerPanneau(),
+  });
+  const message = el('p', { class: 'meta retour-message', role: 'status' });
+  const envoyer = el(
+    'button',
+    { class: 'primaire', type: 'button', onclick: () => envoyerRetour(champ, message, envoyer) },
+    T.retourEnvoyer,
+  );
+  return el(
+    'div',
+    { id: 'retour-boite', class: 'retour-boite', hidden: true },
+    champ,
+    el(
+      'div',
+      { class: 'retour-actions' },
+      envoyer,
+      el('button', { class: 'texte', type: 'button', onclick: () => basculerRetour(false) }, T.retourAnnuler),
+    ),
+    message,
+  );
+}
+function basculerRetour(ouvrir) {
+  const b = $('retour-boite');
+  if (!b) return;
+  const oui = ouvrir ?? b.hidden;
+  b.hidden = !oui;
+  $('retour-bouton').setAttribute('aria-expanded', String(oui));
+  if (oui) {
+    b.querySelector('.retour-message').textContent = '';
+    $('retour-texte').focus();
+    armerPanneau();
+  }
+}
+const lu = (id) => (document.getElementById(id)?.textContent || '').trim().slice(0, 200) || null;
+function contexteRetour() {
+  const v = window.__visiteur,
+    a = window.afterTV;
+  const lampes = Object.fromEntries(
+    [...document.querySelectorAll('.lampe')].map((l) => [l.dataset.lampe, l.dataset.etat || '']),
+  );
+  return {
+    page: location.pathname + location.search,
+    phase,
+    source: v?.source?.() ?? null,
+    ecoute: v?.ecoute?.() ?? null,
+    erreur: v?.erreur?.()?.texte ?? null,
+    titre: lu('style-titre'),
+    style: lu('style-infos'),
+    maintenant: lu('titre'),
+    bpm: lu('bpm'),
+    mode: lu('mode'),
+    lampes,
+    sd: a?.sd?.() ?? null,
+    vhs: window.__interface?.vhsDemande?.() ?? null,
+    plein_ecran: !!document.fullscreenElement,
+    ecran: `${innerWidth}x${innerHeight}`,
+    langue: navigator.language,
+  };
+}
+async function envoyerRetour(champ, message, bouton) {
+  const texte = champ.value.trim();
+  if (!texte) {
+    champ.focus();
+    return;
+  }
+  bouton.disabled = true;
+  try {
+    const r = await fetch('/after-tv/retour', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texte, contexte: contexteRetour() }),
+    });
+    if (r.ok) {
+      champ.value = '';
+      message.textContent = T.retourMerci;
+      setTimeout(() => basculerRetour(false), 2500);
+    } else message.textContent = r.status === 429 ? T.retourPlafond : T.retourRate;
+  } catch {
+    message.textContent = T.retourRate;
+  }
+  bouton.disabled = false;
 }
 const panneauOuvert = () => !!panneau?.classList.contains('ouvert');
 function definirTouches(texte) {
@@ -997,6 +1112,7 @@ export {
   avis,
   battre,
   boutonChaine,
+  contexteRetour,
   definirDirect,
   definirEntree,
   definirInfo,

@@ -27,6 +27,9 @@ const T = {
   suggestionFermer: 'Dismiss the radio suggestion',
   micro: 'Use the microphone (less precise)',
   aidePartage: 'In the share dialog, tick "Share system audio" (or "Share tab audio" when you pick a tab).',
+  consigneSysteme:
+    'In the window that opens: pick your screen, switch on "Also share system audio" at the bottom left, then Share.',
+  consigneOnglet: 'In the window that opens: keep "Also share tab audio" on, then Share.',
   aideSansCapture: 'This browser cannot listen to your computer, so the radio and the microphone are yours.',
   entrer: 'Enter',
   chauffe: 'Warming up',
@@ -414,6 +417,7 @@ function installerVisiteur(api) {
       }
       const ici = ++jeton;
       enAttente = true;
+      if (src === 'system' || src === 'tab') montrerConsignePartage(src);
       try {
         promesse = moteur
           ? moteur.demarrer(src, options)
@@ -425,6 +429,7 @@ function installerVisiteur(api) {
       } catch (e) {
         promesse = Promise.reject(e);
       }
+      promesse.finally(() => cacherConsignePartage()).catch(() => {});
       promesse.then(
         () => {
           if (ici === jeton) enAttente = false;
@@ -472,6 +477,24 @@ function installerVisiteur(api) {
       }
     });
     a.play().catch(rate);
+  }
+  function montrerConsignePartage(src) {
+    let c = $('consigne-partage');
+    if (!c) {
+      c = el(
+        'div',
+        { id: 'consigne-partage', role: 'status' },
+        el('span', { class: 'fleche-consigne', 'aria-hidden': 'true' }, '↙'),
+        el('p'),
+      );
+      document.body.append(c);
+    }
+    c.querySelector('p').textContent = src === 'tab' ? T.consigneOnglet : T.consigneSysteme;
+    c.hidden = false;
+  }
+  function cacherConsignePartage() {
+    const c = $('consigne-partage');
+    if (c) c.hidden = true;
   }
   function libererOptions(options) {
     try {
