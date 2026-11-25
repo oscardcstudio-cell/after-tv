@@ -1369,70 +1369,85 @@ async function demarrer() {
             : 'Open After TV next to this page and play some music to see it live.',
     });
   const VUES = [];
-  VUES[0] = () => {
-    const el = $('#v0');
-    if (!el.__fait) {
-      el.__fait = true;
-      el.append(
-        h(
-          'div',
-          { class: 'chaine' },
-          ['Sound', 'Ear', 'Brain', 'Edit', 'Screen'].map((t) =>
-            h('div', null, h('h3', { text: t }), h('div', { class: 'val' }), h('div', { class: 'discret' })),
-          ),
-        ),
-        h('p', { class: 'discret pied' }),
-      );
-    }
-    const st = el.querySelectorAll('.chaine > div');
-    const val = (i) => st[i].querySelector('.val'),
-      meta = (i) => st[i].querySelector('.discret');
-    const n = v.niveaux;
-    const fort = n ? Math.max(...[n.grave, n.medium, n.aigu, n.total].filter(Number.isFinite)) : null;
-    texte(val(0), v.silence ? 'Silence' : Number.isFinite(fort) ? `${Math.round(fort)} dB` : '–');
-    texte(meta(0), nomSource(v.source) ?? (S.e ? 'your music' : ''));
-    texte(val(1), v.bpm ? `${Math.round(v.bpm)} BPM` : '–');
-    texte(meta(1), [v.temps ? `beat ${v.temps} of 4` : '', v.kick ? 'kick' : ''].filter(Boolean).join(' · '));
-    texte(val(2), nomPartie(v.partie) ?? '–');
-    texte(meta(2), Number.isInteger(v.mesure) ? `bar ${v.mesure}` : '');
-    texte(val(3), S.e ? (nomMode(v.mode) ?? '–') : '–');
-    const g = journalCourt(v.journal, nomCol, 1)[0];
-    const frais = g && Number.isFinite(v.t) && Number.isFinite(g.g.t) && v.t - g.g.t < 12;
-    texte(meta(3), frais ? g.en.quoi : '');
-    const ecran = aLEcran().filter((x) => Number(x.c.opacite ?? 1) > 0.05);
-    if (!val(4).__direct) {
-      val(4).__direct = true;
-      const toile = h('canvas', {
-        class: 'ecran-direct',
-        width: 640,
-        height: 360,
-        'aria-label': 'The film, live',
-      });
-      val(4).append(toile, h('div', { class: 'vignettes' }));
-      const ctx = toile.getContext('2d');
-      const image = () => {
-        requestAnimationFrame(image);
-        if (document.hidden) return;
-        const api = filmApi();
-        let ok = false;
-        try {
-          ok = !!api?.couchesVhs && composerCouches(ctx, api.couchesVhs(), toile.width, toile.height);
-        } catch {
-          ok = false;
-        }
-        toile.hidden = !ok;
-        val(4).querySelector('.vignettes').hidden = ok;
-      };
+  const schema = document.querySelector('.schema');
+  const params = (cle, lignes) => {
+    const dl = schema?.querySelector(`[data-p="${cle}"]`);
+    if (!dl) return;
+    const vus = lignes.filter(([, w]) => w != null && w !== '');
+    bloc(dl, JSON.stringify(vus), () =>
+      vus.flatMap(([k, w]) => [h('dt', { text: k }), h('dd', { text: String(w) })]),
+    );
+  };
+  if (schema && !schema.__direct) {
+    schema.__direct = true;
+    const toile = schema.querySelector('.ecran-direct');
+    const ctx = toile.getContext('2d');
+    const image = () => {
       requestAnimationFrame(image);
-    }
-    bloc(val(4).querySelector('.vignettes'), ecran.map((x) => x.loop.id).join(), () =>
-      ecran.map((x) => img(x.loop, x.loop.nom)),
-    );
-    texte(meta(4), S.e ? `${v.ecrans || 0} layer${v.ecrans === 1 ? '' : 's'}` : '');
-    texte(
-      el.querySelector('.pied'),
-      `Everything runs in the visitor's browser: live-audio-analyzer${commitLaa ? ` (commit ${commitLaa})` : ''} and YAMNet for the ear, Python on Pyodide for the brain and the edit. The ${loops.length} loops are served from Cloudflare R2.`,
-    );
+      if (document.hidden) return;
+      const api = filmApi();
+      let ok = false;
+      try {
+        ok = !!api?.couchesVhs && composerCouches(ctx, api.couchesVhs(), toile.width, toile.height);
+      } catch {
+        ok = false;
+      }
+      toile.classList.toggle('vide', !ok);
+    };
+    requestAnimationFrame(image);
+  }
+  VUES[0] = () => {
+    if (!schema) return;
+    schema.style.setProperty('--temps', `${v.bpm ? 60 / v.bpm : 0.5}s`);
+    const n = v.niveaux;
+    const db = (x) => (Number.isFinite(x) ? `${Math.round(x)} dB` : null);
+    params('son', [
+      ['Source', nomSource(v.source) ?? (S.e ? 'your music' : null)],
+      ['Level', v.silence ? 'silence' : db(n?.total)],
+      ['Low', db(n?.grave)],
+      ['Mid', db(n?.medium)],
+      ['High', db(n?.aigu)],
+    ]);
+    const g = S.genre?.musique ? S.genre.labels?.[0]?.label : null;
+    params('oreille', [
+      ['Tempo', v.bpm ? `${v.bpm.toFixed(1)} BPM` : null],
+      ['Beat', v.temps ? `${v.temps} of 4${v.kick ? ', kick' : ''}` : null],
+      ['Key', tonaliteEn(v.ecoute?.tonalite)],
+      ['Genre', g],
+    ]);
+    params('cerveau', [
+      [
+        'Part',
+        nomPartie(v.partie)
+          ? `${nomPartie(v.partie)}${Number.isFinite(v.confiance) ? `, ${pc(v.confiance)}` : ''}`
+          : null,
+      ],
+      ['Bar', Number.isInteger(v.mesure) ? v.mesure : null],
+      ['Mode', S.e ? nomMode(v.mode) : null],
+      ['Drop in', Number.isFinite(v.dropDans) ? `${v.dropDans} bars` : null],
+    ]);
+    const dom = v.dominante != null ? nomCol(v.dominante) : null;
+    const g1 = journalCourt(v.journal, nomCol, 1)[0];
+    params('montage', [
+      ['Dominant', dom],
+      ['Layers', S.e ? v.ecrans || 0 : null],
+      ['Cuts on', v.declencheur ? ({ hihat: 'hi-hat', snare: 'snare' }[v.declencheur] ?? 'kick') : null],
+      ['Last move', g1?.en.quoi],
+    ]);
+    params('ecran', [
+      [
+        'On screen',
+        aLEcran()
+          .map((x) => x.loop.nom)
+          .slice(0, 2)
+          .join(', ') || null,
+      ],
+    ]);
+    params('titre', [['Style', styleEn(v.styleSon) ?? S.demo?.morceau?.style ?? null]]);
+    params('biblio', [
+      ['Loops', loops.length || null],
+      ['In the pool', loops.length ? M.vivier(loops, v.mood, v.familles).length : null],
+    ]);
   };
   VUES[1] = () => {
     const el = $('#v1');
