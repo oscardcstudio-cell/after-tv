@@ -816,6 +816,142 @@ function titreDemo(m) {
 const horloge = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const pc = (x) => `${Math.round(x * 100)}%`;
 const NB_ETAPES = 13;
+const partNiveau = (db) => (Number.isFinite(db) ? Math.max(0, Math.min(1, (db + 80) / 80)) : 0);
+const DEMI_TONS = {
+  C: 0,
+  'C#': 1,
+  Db: 1,
+  D: 2,
+  'D#': 3,
+  Eb: 3,
+  E: 4,
+  F: 5,
+  'F#': 6,
+  Gb: 6,
+  G: 7,
+  'G#': 8,
+  Ab: 8,
+  A: 9,
+  'A#': 10,
+  Bb: 10,
+  B: 11,
+};
+function gamme(t) {
+  const m = /^([A-G][#b]?)\s*(min|maj|m|M)?$/.exec(String(t ?? '').trim());
+  if (!m || DEMI_TONS[m[1]] == null) return null;
+  const mineur = !!m[2] && (m[2].toLowerCase().startsWith('min') || m[2] === 'm');
+  const tonique = DEMI_TONS[m[1]];
+  const pas = mineur ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
+  return { tonique, mineur, notes: pas.map((p) => (tonique + p) % 12) };
+}
+const demiTon = (n) => {
+  const e = noteEn(n);
+  return e ? (DEMI_TONS[e] ?? null) : null;
+};
+function noteDuTemps(suite, temps) {
+  if (!suite || !Number.isInteger(temps)) return null;
+  const pas = String(suite).trim().split(/\s+/);
+  for (const x of pas.slice((temps - 1) * 4, temps * 4))
+    if (x !== '·') {
+      const d = demiTon(x);
+      if (d != null) return d;
+    }
+  return null;
+}
+const pasDe = (s) => Array.from({ length: 16 }, (_, i) => String(s ?? '')[i] === 'x');
+function placePhrase(v) {
+  if (Number.isInteger(v?.phrase)) return ((v.phrase % 8) + 8) % 8;
+  if (!Number.isInteger(v?.mesure)) return null;
+  const d = Number.isInteger(v.depuis) ? v.depuis : 1;
+  return (((v.mesure - d) % 8) + 8) % 8;
+}
+const nouveauxParis = () => ({ drop: null, fin: null, verdicts: [], derniere: null });
+function suivreParis(p, v) {
+  const m = v?.mesure;
+  if (!Number.isInteger(m)) return p;
+  if (p.derniere != null && m < p.derniere) Object.assign(p, nouveauxParis());
+  if (p.derniere === m) return p;
+  p.derniere = m;
+  for (const k of ['drop', 'fin']) {
+    const x = p[k];
+    if (!x || m < x.cible) continue;
+    const juste =
+      k === 'drop' ? v.lecture === 'drop' || v.partie === 'refrain' : !!v.partie && v.partie !== x.partie;
+    p.verdicts.push({ mesure: x.cible, type: k, juste, annonce: x.depuis });
+    p[k] = null;
+  }
+  if (p.verdicts.length > 200) p.verdicts.splice(0, p.verdicts.length - 200);
+  if (Number.isInteger(v.dropDans) && v.dropDans > 0) {
+    const c = m + v.dropDans;
+    if (p.drop?.cible !== c) p.drop = { cible: c, depuis: m };
+  } else p.drop = null;
+  const fd = v.revient?.fin_dans;
+  if (Number.isInteger(fd) && fd > 0) {
+    const c = m + fd;
+    if (p.fin?.cible !== c) p.fin = { cible: c, depuis: m, partie: v.partie };
+  } else p.fin = null;
+  return p;
+}
+function segmentsParties(parties, de, a) {
+  const out = [];
+  for (let m = de; m < a; m++) {
+    const p = parties.get(m);
+    if (!p) continue;
+    const prec = out[out.length - 1];
+    if (prec && prec.partie === p && prec.a === m) prec.a = m + 1;
+    else out.push({ de: m, a: m + 1, partie: p });
+  }
+  return out;
+}
+function avenirParties(v, parties, fin) {
+  const m = v.mesure;
+  if (!Number.isInteger(m)) return [];
+  const out = [];
+  const pousse = (de, a, partie, nom) => {
+    de = Math.max(de, m + 1);
+    a = Math.min(a, fin);
+    if (a <= de) return;
+    const prec = out[out.length - 1];
+    if (prec && prec.partie === partie && prec.nom === nom && prec.a === de) prec.a = a;
+    else out.push({ de, a, partie, nom });
+  };
+  const r = v.revient;
+  if (r && Number.isInteger(r.comme) && Number.isInteger(r.fin_dans) && Number.isInteger(r.duree)) {
+    const debut = m - (r.duree - r.fin_dans);
+    for (let b = m + 1; b <= m + r.fin_dans; b++) {
+      const p = parties.get(r.comme + (b - debut)) ?? v.partie;
+      pousse(b, b + 1, p, nomPartie(p));
+    }
+    pousse(m + r.fin_dans + 1, fin, null, '?');
+  } else if (Number.isInteger(v.dropDans) && v.dropDans > 0) {
+    pousse(m + 1, m + v.dropDans, v.partie, nomPartie(v.partie));
+    pousse(m + v.dropDans, fin, 'refrain', 'Drop');
+  } else {
+    const ph = placePhrase(v) ?? 0;
+    const bord = m + (8 - ph);
+    pousse(m + 1, bord, v.partie, nomPartie(v.partie));
+    pousse(bord, fin, null, '?');
+  }
+  return out;
+}
+function parTheme(loops, nomTheme = (t) => t, min2 = 5) {
+  const g = new Map();
+  for (const l of loops) {
+    const t = l.theme || null;
+    if (!g.has(t)) g.set(t, []);
+    g.get(t).push(l);
+  }
+  const gros = [],
+    autres = [];
+  for (const [t, ls] of g) {
+    if (t && ls.length >= min2) gros.push({ nom: nomTheme(t), loops: ls });
+    else autres.push(...ls);
+  }
+  gros.sort((a, b) => b.loops.length - a.loops.length);
+  if (autres.length) gros.push({ nom: 'other', loops: autres });
+  for (const x of gros) x.loops.sort((a, b) => (a.colonne ?? 1e9) - (b.colonne ?? 1e9));
+  return gros;
+}
 const borne = (n) => Math.max(0, Math.min(NB_ETAPES - 1, n));
 if (typeof document !== 'undefined') demarrer().catch((e) => console.error(e));
 async function demarrer() {
@@ -831,12 +967,12 @@ async function demarrer() {
   const reduit = matchMedia('(prefers-reduced-motion: reduce)');
   function h(tag, props, ...enfants) {
     const el = document.createElement(tag);
-    for (const [k, val] of Object.entries(props || {})) {
-      if (val == null || val === false) continue;
-      if (k === 'class') el.className = val;
-      else if (k === 'text') el.textContent = val;
-      else if (k.startsWith('on')) el.addEventListener(k.slice(2), val);
-      else el.setAttribute(k, val === true ? '' : val);
+    for (const [k, val2] of Object.entries(props || {})) {
+      if (val2 == null || val2 === false) continue;
+      if (k === 'class') el.className = val2;
+      else if (k === 'text') el.textContent = val2;
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), val2);
+      else el.setAttribute(k, val2 === true ? '' : val2);
     }
     for (const c of enfants.flat(Infinity))
       if (c != null && c !== false && c !== '') el.append(c instanceof Node ? c : String(c));
@@ -920,6 +1056,7 @@ async function demarrer() {
     kickDash: false,
     dernierPas: null,
     demo: null,
+    paris: nouveauxParis(),
   };
   const HIST_MAX = 48;
   function remettre() {
@@ -934,6 +1071,7 @@ async function demarrer() {
     S.genre = null;
     S.tempo = null;
     S.dernierPas = null;
+    S.paris = nouveauxParis();
   }
   function recevoir(m) {
     if (!m || typeof m !== 'object') return;
@@ -988,6 +1126,7 @@ async function demarrer() {
     S.hist.push({ t: v.t, temps: v.temps, mesure: v.mesure, kick, couches });
     if (S.hist.length > HIST_MAX) S.hist.shift();
     if (Number.isInteger(v.mesure) && v.partie) S.parties.set(v.mesure, v.partie);
+    suivreParis(S.paris, v);
     for (const c of Object.values(couches)) {
       const l = loopDe(c.col, c.nom);
       if (l && c.opacite > 0.05 && !S.vusEcran.has(l.id)) {
@@ -1370,16 +1509,369 @@ async function demarrer() {
     });
   const VUES = [];
   const schema = document.querySelector('.schema');
-  const params = (cle, lignes) => {
-    const dl = schema?.querySelector(`[data-p="${cle}"]`);
-    if (!dl) return;
-    const vus = lignes.filter(([, w]) => w != null && w !== '');
-    bloc(dl, JSON.stringify(vus), () =>
-      vus.flatMap(([k, w]) => [h('dt', { text: k }), h('dd', { text: String(w) })]),
+  const anime = (el, kf, o) =>
+    !el || reduit.matches || typeof el.animate !== 'function' ? null : el.animate(kf, o);
+  const NS = 'http://www.w3.org/2000/svg';
+  function sv(tag, attrs = {}, ...enfants) {
+    const el = document.createElementNS(NS, tag);
+    for (const [k, x] of Object.entries(attrs)) if (x != null) el.setAttribute(k, x);
+    for (const c of enfants.flat()) if (c) el.append(c);
+    return el;
+  }
+  const pv = (k, nom, ...visuel) =>
+    h(
+      'div',
+      { class: `pv pv-${k}` },
+      h(
+        'div',
+        { class: 'pv-tete' },
+        h('span', { class: 'pv-nom', text: nom }),
+        h('span', { class: 'pv-val' }),
+      ),
+      ...visuel,
     );
+  const val = (racine, k, t) => texte(racine?.querySelector(`.pv-${k} .pv-val`), t ?? '');
+  const nomTheme = (t) => tagEn(`thème:${t}`).valeur;
+  function grilleBiblio(racine) {
+    const cases = new Map();
+    const groupes = parTheme(loops, nomTheme).map((g) => {
+      const cols = Math.max(4, Math.ceil(Math.sqrt(g.loops.length * 1.8)));
+      const grille = h(
+        'div',
+        { class: 'cases', style: `--cols:${cols}` },
+        g.loops.map((l) => {
+          const c = h('i', { title: l.nom });
+          cases.set(l.id, c);
+          return c;
+        }),
+      );
+      return h(
+        'div',
+        { class: 'theme' },
+        h('span', { class: 'theme-nom' }, h('b', { text: g.nom }), ` ${g.loops.length}`),
+        grille,
+      );
+    });
+    racine.replaceChildren(...groupes);
+    const avant = { ecran: new Set(), joue: new Set(), vivier: new Set() };
+    return function maj(ecran, joue, vivier) {
+      for (const [cle, neuf] of Object.entries({ ecran, joue, vivier })) {
+        const vieux = avant[cle];
+        for (const id of vieux) if (!neuf.has(id)) cases.get(id)?.classList.remove(cle);
+        for (const id of neuf)
+          if (!vieux.has(id)) {
+            const c = cases.get(id);
+            if (!c) continue;
+            c.classList.add(cle);
+            if (cle === 'ecran')
+              anime(
+                c,
+                [
+                  { transform: 'scale(2.6)', opacity: 0.4 },
+                  { transform: 'scale(1)', opacity: 1 },
+                ],
+                { duration: 320, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+              );
+          }
+        avant[cle] = new Set(neuf);
+      }
+    };
+  }
+  const idsEcran = () =>
+    new Set(
+      aLEcran()
+        .filter((x) => Number(x.c.opacite ?? 1) > 0.05)
+        .map((x) => x.loop.id),
+    );
+  let vivierCle = null,
+    vivierIds = new Set();
+  const vivierActuel = () => {
+    const cle = `${v.mood}|${(v.familles || []).join()}`;
+    if (cle !== vivierCle) {
+      vivierCle = cle;
+      vivierIds = new Set(M.vivier(loops, v.mood, v.familles).map((l) => l.id));
+    }
+    return vivierIds;
   };
+  const SOURCES = [
+    ['system', 'Computer', 'M3 5h18v11H3zM8 20h8M12 16v4'],
+    [
+      'tab',
+      'Link',
+      'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+    ],
+    ['radio', 'Radio', 'M4 10h16v10H4zM7 10l10-5M8 15h.01M13 14h4M13 17h4'],
+    ['mic', 'Mic', 'M9 5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0zM6 11a6 6 0 0 0 12 0M12 17v4M9 21h6'],
+  ];
+  const cleSource = (s) =>
+    s == null
+      ? null
+      : s === 'system' || s === 'loopback'
+        ? 'system'
+        : s === 'tab' || s === 'radio'
+          ? s
+          : s === 'fichier'
+            ? null
+            : 'mic';
+  const BANDES = [
+    ['grave', 'Bass'],
+    ['medium', 'Middle'],
+    ['aigu', 'Treble'],
+  ];
+  const ORDRE_PARTIES = ['intro', 'couplet', 'montee', 'refrain', 'break', 'outro'];
+  const SENS_MODE = {
+    drop: 'full edit',
+    break: 'calm, long shots',
+    suspension: 'holding its breath',
+    hyper: 'flat out',
+  };
+  const VOIES = [
+    ['kick', 'Kick', 'pas_kick'],
+    ['snare', 'Snare', 'pas_caisse'],
+    ['hihat', 'Hi-hat', 'pas_hat'],
+  ];
+  const TOUCHES = [
+    [0, 0],
+    [2, 10],
+    [4, 20],
+    [5, 30],
+    [7, 40],
+    [9, 50],
+    [11, 60],
+    [1, 7, 1],
+    [3, 17, 1],
+    [6, 37, 1],
+    [8, 47, 1],
+    [10, 57, 1],
+  ];
+  function construireSchema() {
+    const p = (cle) => schema.querySelector(`[data-p="${cle}"]`);
+    p('son')?.replaceChildren(
+      pv(
+        'source',
+        'Listening to',
+        h(
+          'div',
+          { class: 'sources' },
+          SOURCES.map(([k, nom, d]) =>
+            h(
+              'span',
+              { class: 'src', 'data-s': k },
+              sv('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true' }, sv('path', { d })),
+              h('small', { text: nom }),
+            ),
+          ),
+        ),
+      ),
+      pv(
+        'niveaux',
+        'Loudness',
+        h(
+          'div',
+          { class: 'vu' },
+          BANDES.map(([k, nom]) =>
+            h(
+              'div',
+              { class: 'vu-col', 'data-b': k },
+              h('div', { class: 'vu-piste' }, h('i')),
+              h('small', { text: nom }),
+              h('small', { class: 'vu-db' }),
+            ),
+          ),
+          h(
+            'div',
+            { class: 'vu-echelle' },
+            h('small', { text: '0 dB' }),
+            h('small', { class: 'vu-silence', text: 'silence' }),
+          ),
+        ),
+      ),
+    );
+    const bras = sv(
+      'g',
+      { class: 'bras' },
+      sv('line', { x1: 30, y1: 40, x2: 30, y2: 6 }),
+      sv('rect', { x: 26, y: 14, width: 8, height: 6 }),
+    );
+    p('oreille')?.replaceChildren(
+      pv(
+        'tempo',
+        'Speed',
+        h(
+          'div',
+          { class: 'tempo' },
+          h('span', { class: 'bpm-n' }),
+          h('small', { text: 'beats per minute' }),
+          sv(
+            'svg',
+            { class: 'metronome', viewBox: '0 0 60 44', 'aria-hidden': 'true' },
+            sv('path', { class: 'socle', d: 'M18 43h24L34 4h-8z' }),
+            bras,
+          ),
+        ),
+      ),
+      pv(
+        'temps',
+        'Beat in the bar',
+        h(
+          'div',
+          { class: 'temps' },
+          [1, 2, 3, 4].map((n) =>
+            h('span', { class: 'tp', 'data-n': n }, h('i', { class: 'anneau' }), h('small', { text: n })),
+          ),
+          h('span', { class: 'kick-mot', text: 'kick' }),
+        ),
+      ),
+      pv(
+        'cle',
+        'Key of the music',
+        sv(
+          'svg',
+          { class: 'clavier', viewBox: '-1 -1 72 32', 'aria-hidden': 'true' },
+          TOUCHES.map(([d, x, noire]) =>
+            sv('rect', {
+              class: noire ? 'k noire' : 'k',
+              'data-d': d,
+              x,
+              y: 0,
+              width: noire ? 6 : 10,
+              height: noire ? 18 : 30,
+            }),
+          ),
+          sv('circle', { class: 'note-ici', cx: 0, cy: 0, r: 2.2 }),
+        ),
+      ),
+      pv(
+        'genre',
+        'Kind of music',
+        h(
+          'div',
+          { class: 'genre-top' },
+          h('span', { class: 'genre-nom' }),
+          h('span', { class: 'barre' }, h('i')),
+        ),
+      ),
+    );
+    p('cerveau')?.replaceChildren(
+      pv(
+        'partie',
+        'Part of the track',
+        h(
+          'div',
+          { class: 'parties-liste' },
+          h('i', { class: 'curseur' }, h('b')),
+          ORDRE_PARTIES.map((k) => h('span', { 'data-k': k, text: PARTIES[k] })),
+        ),
+      ),
+      pv(
+        'phrase',
+        'Bars, counted in 8s',
+        h(
+          'div',
+          { class: 'huit' },
+          Array.from({ length: 8 }, () => h('i')),
+        ),
+      ),
+      pv(
+        'mode',
+        'Mode',
+        h(
+          'div',
+          { class: 'pads' },
+          ['drop', 'break', 'suspension', 'hyper'].map((k) => h('span', { 'data-m': k, text: MODES[k] })),
+        ),
+      ),
+      pv(
+        'drop',
+        'Next drop',
+        h(
+          'div',
+          { class: 'compte' },
+          h('span', { class: 'compte-n' }),
+          h(
+            'span',
+            { class: 'compte-cases' },
+            Array.from({ length: 8 }, () => h('i')),
+          ),
+        ),
+      ),
+    );
+    p('montage')?.replaceChildren(
+      pv(
+        'dom',
+        'Main loop',
+        h('div', { class: 'dom' }, h('div', { class: 'dom-grande' }), h('div', { class: 'dom-satellites' })),
+      ),
+      pv(
+        'couches',
+        'Images mixed',
+        h(
+          'div',
+          { class: 'empile' },
+          [0, 1, 2].map((i) => h('i', { style: `--i:${i}` })),
+        ),
+      ),
+      pv(
+        'coupes',
+        'Cuts follow',
+        h(
+          'div',
+          { class: 'voies' },
+          VOIES.map(([k, nom]) =>
+            h(
+              'div',
+              { class: 'voie', 'data-v': k },
+              h('small', { text: nom }),
+              h(
+                'span',
+                { class: 'pas16' },
+                Array.from({ length: 16 }, () => h('i')),
+              ),
+            ),
+          ),
+          h('div', { class: 'lecteur' }),
+        ),
+      ),
+      pv('geste', 'Last decision', h('div', { class: 'ticker' })),
+    );
+    p('ecran')?.replaceChildren(pv('surecran', 'On screen'));
+    p('titre')?.replaceChildren(
+      pv(
+        'style',
+        'Style of the track',
+        h(
+          'div',
+          { class: 'trouve' },
+          h('span', { 'data-e': 'ecoute', text: 'listening' }),
+          h('i'),
+          h('span', { 'data-e': 'trouve', text: 'found' }),
+        ),
+      ),
+    );
+    const bib = h('div', { class: 'biblio' });
+    p('biblio')?.replaceChildren(
+      pv(
+        'biblio',
+        'Each square is one loop',
+        bib,
+        h(
+          'p',
+          { class: 'leg-biblio' },
+          h('span', null, h('i', { class: 'ecran' }), 'on screen'),
+          h('span', null, h('i', { class: 'joue' }), 'played'),
+          h('span', null, h('i', { class: 'vivier' }), 'can play now'),
+          h('span', null, h('i'), 'not now'),
+        ),
+      ),
+    );
+    schema.__biblio = loops.length ? grilleBiblio(bib) : null;
+    schema
+      .querySelectorAll('.schema-ligne .flux')
+      .forEach((f) => f.append(h('span', { class: 'voyage' }, h('b', { class: 'paquet' }))));
+  }
   if (schema && !schema.__direct) {
     schema.__direct = true;
+    construireSchema();
     const toile = schema.querySelector('.ecran-direct');
     const ctx = toile.getContext('2d');
     const image = () => {
@@ -1396,59 +1888,362 @@ async function demarrer() {
     };
     requestAnimationFrame(image);
   }
+  const etroit = matchMedia('(max-width: 900px)');
+  const OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
+  function defile(boite, t) {
+    if (!boite || boite.__t === t) return;
+    boite.__t = t;
+    const vieux = boite.querySelector('span:not(.sort)');
+    const neuf = h('span', { text: t });
+    boite.append(neuf);
+    if (vieux) {
+      vieux.classList.add('sort');
+      const a = anime(
+        vieux,
+        [
+          { transform: 'translateY(0)', opacity: 1 },
+          { transform: 'translateY(-100%)', opacity: 0 },
+        ],
+        { duration: 220, easing: 'ease-in', fill: 'forwards' },
+      );
+      if (a) a.onfinish = () => vieux.remove();
+      else vieux.remove();
+    }
+    anime(
+      neuf,
+      [
+        { transform: 'translateY(100%)', opacity: 0 },
+        { transform: 'translateY(0)', opacity: 1 },
+      ],
+      { duration: 280, delay: 80, easing: OUT, fill: 'backwards' },
+    );
+  }
   VUES[0] = () => {
     if (!schema) return;
-    schema.style.setProperty('--temps', `${v.bpm ? 60 / v.bpm : 0.5}s`);
+    const T = periode();
+    schema.style.setProperty('--temps', `${T / 1e3}s`);
+    const nouveauTemps = schema.__temps !== S.hist.length;
+    schema.__temps = S.hist.length;
+    const f = v.ecoute || {};
+    const son = schema.querySelector('[data-p="son"]');
+    const src = cleSource(v.source);
+    son.querySelectorAll('.src').forEach((s) => s.classList.toggle('on', s.dataset.s === src));
+    val(son, 'source', nomSource(v.source) ?? (S.mode === 'rejeu' ? 'a recording' : S.e ? 'your music' : ''));
     const n = v.niveaux;
-    const db = (x) => (Number.isFinite(x) ? `${Math.round(x)} dB` : null);
-    params('son', [
-      ['Source', nomSource(v.source) ?? (S.e ? 'your music' : null)],
-      ['Level', v.silence ? 'silence' : db(n?.total)],
-      ['Low', db(n?.grave)],
-      ['Mid', db(n?.medium)],
-      ['High', db(n?.aigu)],
-    ]);
-    const g = S.genre?.musique ? S.genre.labels?.[0]?.label : null;
-    params('oreille', [
-      ['Tempo', v.bpm ? `${v.bpm.toFixed(1)} BPM` : null],
-      ['Beat', v.temps ? `${v.temps} of 4${v.kick ? ', kick' : ''}` : null],
-      ['Key', tonaliteEn(v.ecoute?.tonalite)],
-      ['Genre', g],
-    ]);
-    params('cerveau', [
-      [
-        'Part',
-        nomPartie(v.partie)
-          ? `${nomPartie(v.partie)}${Number.isFinite(v.confiance) ? `, ${pc(v.confiance)}` : ''}`
-          : null,
-      ],
-      ['Bar', Number.isInteger(v.mesure) ? v.mesure : null],
-      ['Mode', S.e ? nomMode(v.mode) : null],
-      ['Drop in', Number.isFinite(v.dropDans) ? `${v.dropDans} bars` : null],
-    ]);
-    const dom = v.dominante != null ? nomCol(v.dominante) : null;
-    const g1 = journalCourt(v.journal, nomCol, 1)[0];
-    params('montage', [
-      ['Dominant', dom],
-      ['Layers', S.e ? v.ecrans || 0 : null],
-      ['Cuts on', v.declencheur ? ({ hihat: 'hi-hat', snare: 'snare' }[v.declencheur] ?? 'kick') : null],
-      ['Last move', g1?.en.quoi],
-    ]);
-    params('ecran', [
-      [
-        'On screen',
-        aLEcran()
-          .map((x) => x.loop.nom)
-          .slice(0, 2)
-          .join(', ') || null,
-      ],
-    ]);
-    params('titre', [['Style', styleEn(v.styleSon) ?? S.demo?.morceau?.style ?? null]]);
-    params('biblio', [
-      ['Loops', loops.length || null],
-      ['In the pool', loops.length ? M.vivier(loops, v.mood, v.familles).length : null],
-    ]);
+    son.querySelectorAll('.vu-col').forEach((c, i) => {
+      const db = n ? (n.total != null ? (i === 1 ? n.total : null) : n[BANDES[i][0]]) : null;
+      const part = v.silence ? 0 : partNiveau(db);
+      const niv = c.querySelector('.vu-piste i');
+      if (nouveauTemps) {
+        niv.__a?.cancel();
+        niv.style.transform = `scaleY(${part})`;
+        niv.__a = anime(niv, [{ transform: `scaleY(${part})` }, { transform: `scaleY(${part * 0.78})` }], {
+          duration: T * 0.95,
+          easing: 'cubic-bezier(.3,0,.7,1)',
+          fill: 'forwards',
+        });
+      }
+      c.classList.toggle('sous', Number.isFinite(db) && db < -60);
+      texte(c.querySelector('.vu-db'), Number.isFinite(db) ? `${Math.round(db)}` : '–');
+    });
+    val(son, 'niveaux', v.silence ? 'silence' : n ? 'on this beat, dB' : '');
+    const or = schema.querySelector('[data-p="oreille"]');
+    texte(or.querySelector('.bpm-n'), v.bpm ? `${Math.round(v.bpm)}` : '–');
+    val(or, 'tempo', v.bpm ? `${v.bpm.toFixed(1)}` : '');
+    const bras = or.querySelector('.bras');
+    if (nouveauTemps && v.bpm && v.temps) {
+      const sens = v.temps % 2 ? 1 : -1;
+      bras.__a?.cancel();
+      bras.__a = anime(
+        bras,
+        [{ transform: `rotate(${-24 * sens}deg)` }, { transform: `rotate(${24 * sens}deg)` }],
+        { duration: T, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'forwards' },
+      );
+    }
+    or.querySelectorAll('.tp').forEach((s) => s.classList.toggle('on', Number(s.dataset.n) === v.temps));
+    or.querySelector('.kick-mot').classList.toggle('on', !!v.kick);
+    val(or, 'temps', v.temps ? `${v.temps} of 4` : '');
+    if (nouveauTemps && v.kick && v.temps) {
+      anime(
+        or.querySelector(`.tp[data-n="${v.temps}"] .anneau`),
+        [
+          { transform: 'scale(1)', opacity: 0.9 },
+          { transform: 'scale(2.6)', opacity: 0 },
+        ],
+        { duration: Math.min(T * 0.9, 520), easing: OUT },
+      );
+    }
+    const g = gamme(f.tonalite);
+    const clavier = or.querySelector('.clavier');
+    if (clavier.__cle !== f.tonalite) {
+      clavier.__cle = f.tonalite;
+      clavier.querySelectorAll('.k').forEach((k) => {
+        const d = Number(k.dataset.d);
+        const rang = g ? (d - g.tonique + 12) % 12 : 0;
+        k.style.transitionDelay = `${rang * 25}ms`;
+        k.classList.toggle('dans', !!g && g.notes.includes(d));
+        k.classList.toggle('tonique', !!g && d === g.tonique);
+      });
+    }
+    val(or, 'cle', tonaliteEn(f.tonalite) ?? 'listening');
+    const ici = noteDuTemps(f.suite, v.temps);
+    const point2 = clavier.querySelector('.note-ici');
+    const touche = TOUCHES.find(([d]) => d === ici);
+    point2.classList.toggle('on', !!touche);
+    if (touche) {
+      point2.setAttribute('cx', touche[1] + (touche[2] ? 3 : 5));
+      point2.setAttribute('cy', touche[2] ? 13 : 25);
+      if (nouveauTemps)
+        anime(
+          point2,
+          [
+            { transform: 'scale(2)', opacity: 0.3 },
+            { transform: 'scale(1)', opacity: 1 },
+          ],
+          { duration: 200, easing: OUT },
+        );
+    }
+    const top = S.genre?.labels?.[0];
+    texte(or.querySelector('.genre-nom'), top?.label ?? 'first guess after 5 s');
+    or.querySelector('.genre-top .barre i').style.transform = `scaleX(${top?.share ?? 0})`;
+    val(or, 'genre', top ? pc(top.share) : '');
+    const ce = schema.querySelector('[data-p="cerveau"]');
+    const ip = ORDRE_PARTIES.indexOf(v.partie);
+    const curseur = ce.querySelector('.curseur');
+    curseur.classList.toggle('on', ip >= 0);
+    if (ip >= 0) curseur.style.transform = `translateY(${ip * 100}%)`;
+    curseur.querySelector('b').style.transform = `scaleX(${Number.isFinite(v.confiance) ? v.confiance : 0})`;
+    ce.querySelectorAll('.parties-liste span').forEach((s) =>
+      s.classList.toggle('on', s.dataset.k === v.partie),
+    );
+    val(ce, 'partie', Number.isFinite(v.confiance) && ip >= 0 ? `${pc(v.confiance)} sure` : 'listening');
+    const ph = placePhrase(v);
+    ce.querySelectorAll('.huit i').forEach((c, i) => {
+      c.classList.toggle('passe', ph != null && i < ph);
+      c.classList.toggle('ici', ph === i);
+    });
+    val(ce, 'phrase', Number.isInteger(v.mesure) ? `bar ${v.mesure}` : '');
+    ce.querySelectorAll('.pads span').forEach((s) => {
+      const on = S.e && s.dataset.m === v.mode;
+      if (on && !s.classList.contains('on'))
+        anime(s, [{ transform: 'scale(1.1)' }, { transform: 'scale(1)' }], { duration: 260, easing: OUT });
+      s.classList.toggle('on', !!on);
+    });
+    val(ce, 'mode', S.e ? (SENS_MODE[v.mode] ?? '') : '');
+    const dd = Number.isInteger(v.dropDans) && v.dropDans > 0 ? v.dropDans : null;
+    const cn = ce.querySelector('.compte-n');
+    texte(cn, dd ? String(dd) : '–');
+    if (cn.__n !== dd) {
+      if (dd)
+        anime(
+          cn,
+          [
+            { transform: 'translateY(-40%)', opacity: 0.2 },
+            { transform: 'translateY(0)', opacity: 1 },
+          ],
+          { duration: 220, easing: OUT },
+        );
+      cn.__n = dd;
+    }
+    ce.querySelector('.compte').classList.toggle('on', !!dd);
+    ce.querySelectorAll('.compte-cases i').forEach((c, i) => c.classList.toggle('on', !!dd && i < dd));
+    val(ce, 'drop', dd ? `in ${dd} bar${dd > 1 ? 's' : ''}` : 'none announced');
+    const mo = schema.querySelector('[data-p="montage"]');
+    const ecran = aLEcran();
+    const dom = laReste();
+    const sats = ecran
+      .map((x) => x.loop)
+      .filter((l) => l !== dom)
+      .slice(0, 3);
+    const grande = mo.querySelector('.dom-grande');
+    bloc(grande, dom?.id ?? '', () =>
+      dom
+        ? [img(dom, dom.nom), h('small', { text: dom.nom })]
+        : [h('small', { class: 'vide', text: 'waiting' })],
+    );
+    if (grande.__vu !== dom?.id) {
+      grande.__vu = dom?.id;
+      anime(
+        grande.querySelector('img'),
+        [
+          { opacity: 0, transform: 'scale(.96)' },
+          { opacity: 1, transform: 'scale(1)' },
+        ],
+        { duration: 300, easing: OUT },
+      );
+    }
+    const satsEl = mo.querySelector('.dom-satellites');
+    const avantSats = new Set(satsEl.__ids ?? []);
+    bloc(satsEl, sats.map((l) => l.id).join(), () => sats.map((l) => img(l, l.nom)));
+    satsEl.__ids = sats.map((l) => l.id);
+    satsEl.querySelectorAll('img').forEach((im, i) => {
+      if (!avantSats.has(sats[i]?.id))
+        anime(
+          im,
+          [
+            { opacity: 0, transform: 'translateY(30%)' },
+            { opacity: 1, transform: 'none' },
+          ],
+          { duration: 260, delay: 60 * i, easing: OUT, fill: 'backwards' },
+        );
+    });
+    val(mo, 'dom', sats.length ? `+ ${sats.length} around` : '');
+    const nb = S.e ? Math.max(0, Math.min(3, v.ecrans || 0)) : 0;
+    mo.querySelectorAll('.empile i').forEach((c, i) => c.classList.toggle('on', i < nb));
+    val(mo, 'couches', S.e ? `${nb} of 3` : '');
+    const decl = v.declencheur ?? 'kick';
+    mo.querySelectorAll('.voie').forEach((voie, i) => {
+      const [k, , champ] = VOIES[i];
+      const pas = pasDe(f[champ]);
+      const cle = pas.join();
+      const cases = voie.querySelectorAll('.pas16 i');
+      if (voie.__cle !== cle) {
+        voie.__cle = cle;
+        cases.forEach((c, j) => c.classList.toggle('coup', pas[j]));
+      }
+      const active = k === decl;
+      voie.classList.toggle('on', active);
+      if (active && nouveauTemps && v.temps)
+        for (let j = 0; j < 4; j++) {
+          const q = (v.temps - 1) * 4 + j;
+          if (pas[q])
+            anime(
+              cases[q],
+              [
+                { transform: 'scaleY(2.2)', opacity: 1 },
+                { transform: 'scaleY(1)', opacity: 1 },
+              ],
+              { duration: 240, delay: (T / 4) * j, easing: OUT },
+            );
+        }
+    });
+    const tete2 = mo.querySelector('.lecteur');
+    if (nouveauTemps && v.temps) {
+      tete2.__a?.cancel();
+      tete2.style.transform = `translateX(${(v.temps - 1) * 25}%)`;
+      tete2.__a = anime(
+        tete2,
+        [{ transform: `translateX(${(v.temps - 1) * 25}%)` }, { transform: `translateX(${v.temps * 25}%)` }],
+        { duration: T, easing: 'linear', fill: 'forwards' },
+      );
+    }
+    val(mo, 'coupes', { hihat: 'the hi-hat', snare: 'the snare', kick: 'the kick' }[decl]);
+    defile(
+      mo.querySelector('.ticker'),
+      journalCourt(v.journal, nomCol, 1)[0]?.en.quoi ?? (S.e ? 'nothing yet' : ''),
+    );
+    val(
+      schema.querySelector('[data-p="ecran"]'),
+      'surecran',
+      ecran
+        .map((x) => x.loop.nom)
+        .slice(0, 2)
+        .join(', '),
+    );
+    const ti = schema.querySelector('[data-p="titre"]');
+    const style = styleEn(v.styleSon) ?? S.demo?.morceau?.style ?? null;
+    ti.querySelector('.trouve').dataset.etat = style ? 'trouve' : 'ecoute';
+    val(ti, 'style', style ?? '');
+    const bi = schema.querySelector('[data-p="biblio"]');
+    if (schema.__biblio) {
+      const viv = vivierActuel();
+      schema.__biblio(idsEcran(), S.vusEcran, viv);
+      val(bi, 'biblio', `${viv.size} of ${loops.length} can play now`);
+    }
+    if (nouveauTemps && v.temps) {
+      const coupe = VOIES.some(
+        ([k, , champ]) =>
+          k === decl &&
+          pasDe(f[champ])
+            .slice((v.temps - 1) * 4, v.temps * 4)
+            .some(Boolean),
+      );
+      const mots = [
+        'sound',
+        v.kick ? 'kick' : `beat ${v.temps}`,
+        S.e ? nomMode(v.mode) : 'bar',
+        coupe ? 'cut' : 'loops',
+      ];
+      const axe = etroit.matches ? 'Y' : 'X';
+      schema.querySelectorAll('.schema-ligne .flux').forEach((fl, i) => {
+        const rail2 = fl.querySelector('.voyage');
+        texte(rail2.firstChild, mots[i] ?? '');
+        anime(
+          rail2,
+          [
+            { transform: `translate${axe}(0%)`, opacity: 0 },
+            { opacity: 1, offset: 0.2 },
+            { opacity: 1, offset: 0.8 },
+            { transform: `translate${axe}(100%)`, opacity: 0 },
+          ],
+          { duration: T * 0.55, delay: T * 0.16 * i, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'both' },
+        );
+      });
+    }
   };
+  const pole = (cle, nom, gauche, droite) =>
+    h(
+      'div',
+      { class: 'pole', 'data-k': cle },
+      h(
+        'div',
+        { class: 'pole-tete' },
+        h('span', { class: 'pole-nom', text: nom }),
+        h('span', { class: 'pole-mot' }),
+      ),
+      h('div', { class: 'pole-rail' }, h('span', { class: 'pole-glisse' }, h('i'))),
+      h('div', { class: 'pole-bornes' }, h('small', { text: gauche }), h('small', { text: droite })),
+    );
+  function majPole(racine, cle, x, mot) {
+    const p = racine.querySelector(`.pole[data-k="${cle}"]`);
+    if (!p) return;
+    const ok = Number.isFinite(x);
+    p.classList.toggle('absent', !ok);
+    if (ok)
+      p.querySelector('.pole-glisse').style.transform = `translateX(${Math.max(0, Math.min(1, x)) * 100}%)`;
+    texte(p.querySelector('.pole-mot'), mot ?? (ok ? '' : 'not heard yet'));
+  }
+  const clavierGrand = () =>
+    sv(
+      'svg',
+      { class: 'clavier grand', viewBox: '-1 -1 72 32', 'aria-hidden': 'true' },
+      TOUCHES.map(([d, x, noire]) =>
+        sv('rect', {
+          class: noire ? 'k noire' : 'k',
+          'data-d': d,
+          x,
+          y: 0,
+          width: noire ? 6 : 10,
+          height: noire ? 18 : 30,
+        }),
+      ),
+      TOUCHES.map(([d, x, noire]) =>
+        sv('circle', { class: 'acc', 'data-d': d, cx: x + (noire ? 3 : 5), cy: noire ? 13 : 25, r: 2 }),
+      ),
+    );
+  function majClavier(svg, tonalite, accord) {
+    const g = gamme(tonalite);
+    const m = /^(\S+)\s+(majeur|mineur)$/i.exec(String(accord ?? '').trim());
+    const r = m ? demiTon(m[1]) : null;
+    const acc =
+      r == null ? [] : (m[2].toLowerCase() === 'majeur' ? [0, 4, 7] : [0, 3, 7]).map((x) => (r + x) % 12);
+    const cle = `${tonalite}|${acc}`;
+    if (svg.__cle === cle) return;
+    svg.__cle = cle;
+    svg.querySelectorAll('.k').forEach((k) => {
+      const d = Number(k.dataset.d);
+      k.style.transitionDelay = `${g ? ((d - g.tonique + 12) % 12) * 25 : 0}ms`;
+      k.classList.toggle('dans', !!g && g.notes.includes(d));
+      k.classList.toggle('tonique', !!g && d === g.tonique);
+    });
+    svg.querySelectorAll('.acc').forEach((c) => c.classList.toggle('on', acc.includes(Number(c.dataset.d))));
+  }
+  const LOG20 = Math.log10(20),
+    LOG20K = Math.log10(2e4);
+  const partFreq = (hz) =>
+    Number.isFinite(hz) && hz > 0
+      ? Math.max(0, Math.min(1, (Math.log10(hz) - LOG20) / (LOG20K - LOG20)))
+      : null;
   VUES[1] = () => {
     const el = $('#v1');
     if (!el.__fait) {
@@ -1458,7 +2253,62 @@ async function demarrer() {
           'div',
           { class: 'bloc' },
           titreBloc('The signal on this beat', ''),
-          h('dl', { class: 'rangs signal' }),
+          h(
+            'div',
+            { class: 'signal-v' },
+            h(
+              'div',
+              { class: 'sv-tuile sv-cle' },
+              h(
+                'div',
+                { class: 'pole-tete' },
+                h('span', { class: 'pole-nom', text: 'Key and chord' }),
+                h('span', { class: 'pole-mot' }),
+              ),
+              clavierGrand(),
+              h('small', {
+                class: 'sv-leg',
+                text: 'grey: the notes of the key · filled: its home note · dots: the chord',
+              }),
+            ),
+            h(
+              'div',
+              { class: 'sv-tuile sv-melodie' },
+              h(
+                'div',
+                { class: 'pole-tete' },
+                h('span', { class: 'pole-nom', text: 'Melody, this bar' }),
+                h('span', { class: 'pole-mot' }),
+              ),
+              h('div', { class: 'roll' }, h('div', { class: 'roll-notes' }), h('i', { class: 'roll-temps' })),
+              h('small', { class: 'sv-leg', text: 'one column per sixteenth, low notes at the bottom' }),
+            ),
+            h(
+              'div',
+              { class: 'sv-tuile sv-filtre' },
+              h(
+                'div',
+                { class: 'pole-tete' },
+                h('span', { class: 'pole-nom', text: 'Filter' }),
+                h('span', { class: 'pole-mot' }),
+              ),
+              h(
+                'div',
+                { class: 'filtre' },
+                h('i', { class: 'filtre-passe' }),
+                h('i', { class: 'filtre-coupe' }),
+              ),
+              h(
+                'div',
+                { class: 'pole-bornes' },
+                h('small', { text: '20 Hz, low' }),
+                h('small', { text: 'high, 20 kHz' }),
+              ),
+            ),
+            pole('brillance', 'Brightness', 'dull', 'bright'),
+            pole('espace', 'Space', 'dry', 'reverberant'),
+            pole('dynamique', 'Dynamics', 'squashed', 'airy'),
+          ),
           h('p', { class: 'discret src-note' }),
         ),
         h(
@@ -1478,43 +2328,67 @@ async function demarrer() {
     const s = v.source;
     const f = v.ecoute || {};
     const bouge = (k) => (f[k] && f[k] !== 'stable' ? motEn(f[k]) : null);
-    const signal = [
-      ['Key', tonaliteEn(f.tonalite)],
-      ['Chord', accordEn(f.accord)],
-      ['Melody', suiteEn(f.suite)],
-      ['Pitch', motEn(f.hauteur)],
-      ['Brightness', motEn(f.brillance_mot)],
-      [
-        'Filter',
-        f.filtre != null || Number.isFinite(f.filtre_hz)
-          ? [
-              f.filtre_type ? (motEn(f.filtre_type) ?? f.filtre_type) : 'open',
-              Number.isFinite(f.filtre_hz) ? `cutoff ${(f.filtre_hz / 1e3).toFixed(1)} kHz` : '',
-              bouge('filtre') ?? '',
-            ]
-              .filter(Boolean)
-              .join(', ')
-          : null,
-      ],
-      [
-        'Space',
-        f.espace_mot
-          ? `${motEn(f.espace_mot)}${Number.isFinite(f.espace_rt60) ? ` (reverb ${f.espace_rt60.toFixed(1)} s)` : ''}`
-          : null,
-      ],
-      [
-        'Dynamics',
-        f.dynamique_mot
-          ? `${motEn(f.dynamique_mot)}${Number.isFinite(f.dynamique_db) ? ` (${f.dynamique_db.toFixed(1)} dB)` : ''}`
-          : null,
-      ],
-      ['Noise', motEn(f.bruit)],
-    ];
-    bloc(el.querySelector('.rangs.signal'), JSON.stringify(signal), () =>
-      signal.flatMap(([k, w]) => [
-        h('dt', { text: k }),
-        h('dd', { class: w ? null : 'absent', text: w ?? 'not heard yet' }),
-      ]),
+    const sig = el.querySelector('.signal-v');
+    majClavier(sig.querySelector('.clavier'), f.tonalite, f.accord);
+    texte(
+      sig.querySelector('.sv-cle .pole-mot'),
+      [tonaliteEn(f.tonalite), accordEn(f.accord) ? `chord ${accordEn(f.accord)}` : '']
+        .filter(Boolean)
+        .join(' · ') || 'not heard yet',
+    );
+    const roll = sig.querySelector('.roll-notes');
+    const pas = String(f.suite ?? '')
+      .trim()
+      .split(/\s+/);
+    bloc(roll, f.suite ?? '', () =>
+      pas.map((x, i) => {
+        const d = x === '·' ? null : demiTon(x);
+        return d == null ? null : h('i', { style: `--x:${i};--y:${d}` });
+      }),
+    );
+    if (Number.isInteger(v.temps))
+      sig.querySelector('.roll-temps').style.transform = `translateX(${(v.temps - 1) * 100}%)`;
+    texte(
+      sig.querySelector('.sv-melodie .pole-mot'),
+      suiteEn(f.suite)
+        ? [
+            ...new Set(
+              suiteEn(f.suite)
+                .split(' ')
+                .filter((x) => x !== '·'),
+            ),
+          ].join(' ') || 'silent bar'
+        : 'not heard yet',
+    );
+    const fx = partFreq(f.filtre_hz);
+    const passe = sig.querySelector('.filtre-passe');
+    const haut = f.filtre_type === 'passe-haut';
+    passe.style.transformOrigin = haut ? '100% 50%' : '0 50%';
+    passe.style.transform = `scaleX(${fx == null ? 0 : haut ? 1 - fx : fx})`;
+    sig.querySelector('.filtre-coupe').style.transform = `translateX(${(fx ?? 0) * 100}%)`;
+    sig.querySelector('.filtre').classList.toggle('absent', fx == null);
+    texte(
+      sig.querySelector('.sv-filtre .pole-mot'),
+      fx == null
+        ? 'not heard yet'
+        : `${haut ? 'from' : 'up to'} ${(f.filtre_hz / 1e3).toFixed(1)} kHz${bouge('filtre') ? `, ${bouge('filtre')}` : ''}`,
+    );
+    majPole(sig, 'brillance', f.brillance, motEn(f.brillance_mot));
+    majPole(
+      sig,
+      'espace',
+      f.espace,
+      f.espace_mot
+        ? `${motEn(f.espace_mot)}${Number.isFinite(f.espace_rt60) ? `, reverb ${f.espace_rt60.toFixed(1)} s` : ''}`
+        : null,
+    );
+    majPole(
+      sig,
+      'dynamique',
+      f.dynamique,
+      f.dynamique_mot
+        ? `${motEn(f.dynamique_mot)}${Number.isFinite(f.dynamique_db) ? `, ${f.dynamique_db.toFixed(0)} dB range` : ''}`
+        : null,
     );
     texte(
       el.querySelector('.src-note'),
@@ -1722,6 +2596,7 @@ async function demarrer() {
       f.silence ? `Sudden silence since beat ${f.silence_depuis ?? '?'}.` : 'No sudden silence.',
     );
   };
+  const pctBar = (b, debut, n) => `${((b - debut) / n) * 100}%`;
   VUES[4] = () => {
     const el = $('#v4');
     if (!el.__fait) {
@@ -1730,103 +2605,213 @@ async function demarrer() {
         h(
           'div',
           { class: 'bloc' },
-          titreBloc('Part', ''),
+          titreBloc('Part of the track', ''),
           h(
             'div',
-            { class: 'ligne' },
+            { class: 'p4-haut' },
             h('span', { class: 'gros partie' }),
-            h('span', { class: 'discret conf' }),
+            h(
+              'span',
+              { class: 'p4-sur' },
+              h('span', { class: 'p4-sur-barre' }, h('i')),
+              h('small', { class: 'p4-sur-txt' }),
+            ),
           ),
-          h(
-            'div',
-            { class: 'phrase8' },
-            Array.from({ length: 8 }, (_, i) => h('span', { text: i + 1 })),
-          ),
-          h('p', { class: 'discret phrase-txt' }),
         ),
         h(
           'div',
           { class: 'bloc' },
-          titreBloc('The track so far, one block per bar', ''),
-          h('div', { class: 'parties' }),
+          titreBloc('Heard, and predicted', ''),
           h(
             'div',
-            { class: 'legende-parties' },
-            Object.entries(PARTIES).map(([k, n]) => h('span', null, h('i', { 'data-p': k }), n)),
+            { class: 'tl' },
+            h('div', { class: 'tl-piste' }),
+            h('div', { class: 'tl-tete' }, h('small')),
+          ),
+          h(
+            'p',
+            { class: 'tl-legende' },
+            h('span', null, h('i', { class: 'lg-plein' }), 'heard'),
+            h('span', null, h('i', { class: 'lg-vide' }), 'predicted'),
+            h('span', null, h('b', { class: 'lg-drapeau' }), 'a bet'),
+            h('span', null, h('b', { class: 'lg-juste', text: '✓' }), 'right'),
+            h('span', null, h('b', { class: 'lg-faux', text: '✕' }), 'wrong'),
           ),
         ),
-        h('div', { class: 'bloc' }, titreBloc('What it tells the edit'), h('dl', { class: 'rangs' })),
+        h(
+          'div',
+          { class: 'bloc p4-trois' },
+          h(
+            'div',
+            null,
+            h('h3', { class: 'p4-t', text: 'Bars, in 8s' }),
+            h(
+              'div',
+              { class: 'phrase8' },
+              Array.from({ length: 8 }, (_, i) => h('span', { text: i + 1 })),
+            ),
+          ),
+          h(
+            'div',
+            null,
+            h('h3', { class: 'p4-t', text: 'Drop announced' }),
+            h(
+              'div',
+              { class: 'p4-drop' },
+              h('span', { class: 'p4-drop-n' }),
+              h('small', { class: 'p4-drop-txt' }),
+            ),
+          ),
+          h(
+            'div',
+            null,
+            h('h3', { class: 'p4-t', text: 'Loops on screen' }),
+            h(
+              'div',
+              { class: 'p4-ecrans' },
+              [0, 1, 2].map(() => h('i')),
+            ),
+            h('small', { class: 'p4-ecrans-txt' }),
+          ),
+        ),
       );
     }
     texte(el.querySelector('.partie'), nomPartie(v.partie) ?? 'Listening');
-    texte(
-      el.querySelector('.conf'),
-      [
-        Number.isFinite(v.confiance) ? `${pc(v.confiance)} sure` : '',
-        Number.isInteger(v.depuis) ? `since bar ${v.depuis}` : '',
-      ]
-        .filter(Boolean)
-        .join(' · '),
-    );
+    el.querySelector('.p4-sur-barre i').style.transform =
+      `scaleX(${Number.isFinite(v.confiance) ? v.confiance : 0})`;
+    texte(el.querySelector('.p4-sur-txt'), Number.isFinite(v.confiance) ? `${pc(v.confiance)} sure` : '');
     texte(
       el.querySelector('.bloc:nth-child(1) h3 .droite'),
       Number.isInteger(v.mesure) ? `bar ${v.mesure}` : '',
     );
-    const ph = Number.isInteger(v.phrase) ? v.phrase : null;
-    el.querySelector('.phrase8').hidden = ph == null;
-    el.querySelectorAll('.phrase8 span').forEach((s, i) => s.classList.toggle('on', ph === i));
-    texte(
-      el.querySelector('.phrase-txt'),
-      ph != null ? `Bar ${ph + 1} of the 8-bar phrase.` : 'No 8-bar phrase found yet.',
-    );
-    const mes = [...S.parties.keys()].sort((a, b) => a - b).slice(-48);
-    bloc(el.querySelector('.parties'), mes.map((m) => `${m}${S.parties.get(m)}`).join() + v.mesure, () =>
-      mes.map((m) =>
-        h('span', {
-          'data-p': S.parties.get(m),
-          class: m === v.mesure ? 'ici' : null,
-          title: `bar ${m}: ${nomPartie(S.parties.get(m)) ?? ''}`,
-        }),
-      ),
-    );
+    const tl = el.querySelector('.tl');
+    const etroite = tl.clientWidth < 520;
+    const N = etroite ? 20 : 32,
+      P = etroite ? 13 : 21;
+    tl.style.setProperty('--tete', `${(P / N) * 100}%`);
+    const piste2 = tl.querySelector('.tl-piste');
+    const m = v.mesure;
+    const p = S.paris;
+    const justes = p.verdicts.filter((x) => x.juste).length;
     texte(
       el.querySelector('.bloc:nth-child(2) h3 .droite'),
-      mes.length ? `bars ${mes[0]} to ${mes[mes.length - 1]}` : '',
+      p.verdicts.length ? `bets right: ${justes} / ${p.verdicts.length}` : 'no bet judged yet',
     );
-    const f = v.ecoute || {};
-    const lignes = [
-      [
-        'Drop',
-        Number.isInteger(v.dropDans)
-          ? `due in ${v.dropDans} bar${v.dropDans > 1 ? 's' : ''}: its loops get ready one bar before`
-          : null,
-        'no drop announced',
-      ],
-      [
-        'Part back',
-        v.revient ? `the part comes back, as in bar ${v.revient.comme}: its loops come back` : null,
-        'no part has come back yet',
-      ],
-      [
-        'Riff back',
-        f.riff_revient != null
-          ? `the riff from bar ${f.riff_revient + 1} is back: so are the loops of that moment`
-          : null,
-        'no riff has come back yet',
-      ],
-      [
-        'Loops',
-        v.sejour?.s
-          ? `${v.ecrans} on screen; the ones around the dominant loop stay ${v.sejour.s} s (${nomPartie(v.sejour.pourquoi)?.toLowerCase() ?? (v.sejour.pourquoi === 'hyper' ? 'hyper' : 'density not measured yet')})`
-          : `${v.ecrans} on screen`,
-        '',
-      ],
-    ];
-    bloc(el.querySelector('.rangs'), JSON.stringify(lignes), () =>
-      lignes.flatMap(([k, oui, non]) => [
-        h('dt', { text: k }),
-        h('dd', { class: oui ? null : 'absent', text: oui ?? non }),
-      ]),
+    texte(tl.querySelector('.tl-tete small'), Number.isInteger(m) ? `bar ${m}` : '');
+    if (Number.isInteger(m)) {
+      const debut = m - P,
+        fin = debut + N + 1;
+      const passe = segmentsParties(S.parties, debut, m + 1);
+      const avenir = avenirParties(v, S.parties, fin);
+      const f = v.ecoute || {};
+      const riff = Number.isInteger(f.riff_revient) ? f.riff_revient + 1 : null;
+      const r = v.revient && Number.isInteger(v.revient.comme) ? v.revient : null;
+      const ph2 = placePhrase(v);
+      const bords = [];
+      if (ph2 != null) {
+        for (let b = m - ph2; b < fin; b += 8) if (b >= debut) bords.push(b);
+      }
+      for (let b = m - ph2 - 8; b >= debut && ph2 != null; b -= 8) bords.push(b);
+      const verdicts = p.verdicts.filter((x) => x.mesure >= debut && x.mesure < fin);
+      const enAttente = [p.drop && { ...p.drop, type: 'drop' }, p.fin && { ...p.fin, type: 'fin' }].filter(
+        Boolean,
+      );
+      const cle = JSON.stringify([m, N, passe, avenir, verdicts, enAttente, riff, r, bords]);
+      const avant = new Set((piste2.__verdicts ?? []).map((x) => `${x.type}${x.mesure}`));
+      bloc(piste2, cle, () => {
+        const seg = (s, cls) =>
+          h(
+            'div',
+            {
+              class: `tl-seg ${cls}`,
+              'data-k': s.partie ?? 'inconnu',
+              style: `left:${pctBar(s.de, debut, N)};width:${pctBar(s.a, s.de, N)}`,
+            },
+            (s.a - s.de) * (100 / N) > 7 ? h('span', { text: s.nom ?? nomPartie(s.partie) ?? '' }) : null,
+          );
+        const drapeau = (x, etat) =>
+          h(
+            'div',
+            {
+              class: `tl-cue ${etat}`,
+              'data-v': `${x.type}${x.mesure ?? x.cible}`,
+              style: `left:${pctBar(x.mesure ?? x.cible, debut, N)}`,
+            },
+            h('b', { text: etat === 'juste' ? '✓' : etat === 'faux' ? '✕' : '' }),
+            h('small', { text: x.type === 'drop' ? 'drop' : 'part ends' }),
+          );
+        return [
+          ...bords.map((b) => h('i', { class: 'tl-phrase', style: `left:${pctBar(b, debut, N)}` })),
+          ...passe.map((s) => seg(s, s.a > m ? 'ici' : 'passe')),
+          ...avenir.map((s) => seg(s, s.partie ? 'prevu' : 'prevu inconnu')),
+          r
+            ? h(
+                'div',
+                {
+                  class: 'tl-echo',
+                  style: `left:${pctBar(Math.max(debut, r.comme), debut, N)};width:${pctBar(Math.min(fin, r.comme + r.duree), Math.max(debut, r.comme), N)}`,
+                },
+                h('small', {
+                  text: r.comme < debut ? `comes back, as bar ${r.comme}` : 'the part that comes back',
+                }),
+              )
+            : null,
+          riff && riff >= debut
+            ? h(
+                'div',
+                { class: 'tl-riff', style: `left:${pctBar(riff, debut, N)}` },
+                h('small', { text: 'riff' }),
+              )
+            : null,
+          ...verdicts.map((x) => drapeau(x, x.juste ? 'juste' : 'faux')),
+          ...enAttente.map((x) => drapeau(x, 'attente')),
+          ...[...new Set([...bords, m])]
+            .filter((b) => b >= debut && b < fin)
+            .map((b) => h('small', { class: 'tl-num', style: `left:${pctBar(b, debut, N)}`, text: b })),
+        ];
+      });
+      for (const x of verdicts)
+        if (!avant.has(`${x.type}${x.mesure}`)) {
+          anime(
+            piste2.querySelector(`.tl-cue[data-v="${x.type}${x.mesure}"] b`),
+            [
+              { transform: 'scale(2.2)', opacity: 0 },
+              { transform: 'scale(1)', opacity: 1 },
+            ],
+            { duration: 360, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+          );
+        }
+      piste2.__verdicts = verdicts;
+      const T = periode();
+      const k = Number.isInteger(v.temps) ? v.temps - 1 : 0;
+      if (piste2.__temps !== S.hist.length) {
+        piste2.__temps = S.hist.length;
+        piste2.__a?.cancel();
+        piste2.style.transform = `translateX(${(-k / 4 / N) * 100}%)`;
+        piste2.__a = anime(
+          piste2,
+          [
+            { transform: `translateX(${(-k / 4 / N) * 100}%)` },
+            { transform: `translateX(${(-(k + 1) / 4 / N) * 100}%)` },
+          ],
+          { duration: T, easing: 'linear', fill: 'forwards' },
+        );
+      }
+    } else bloc(piste2, 'vide', () => [attente()]);
+    const ph = placePhrase(v);
+    el.querySelectorAll('.phrase8 span').forEach((s, i) => {
+      s.classList.toggle('on', ph === i);
+      s.classList.toggle('passe', ph != null && i < ph);
+    });
+    const dd = Number.isInteger(v.dropDans) && v.dropDans > 0 ? v.dropDans : null;
+    texte(el.querySelector('.p4-drop-n'), dd ? String(dd) : '–');
+    el.querySelector('.p4-drop').classList.toggle('on', !!dd);
+    texte(el.querySelector('.p4-drop-txt'), dd ? `bar${dd > 1 ? 's' : ''} to go` : 'none now');
+    const nb = Math.max(0, Math.min(3, v.ecrans || 0));
+    el.querySelectorAll('.p4-ecrans i').forEach((c, i) => c.classList.toggle('on', i < nb));
+    texte(
+      el.querySelector('.p4-ecrans-txt'),
+      v.sejour?.s ? `the others change every ${v.sejour.s} s` : `${nb} at once`,
     );
   };
   const DESC_MODES = {
@@ -1921,15 +2906,30 @@ async function demarrer() {
       ['Voice', voix ?? (f.grain_mot ? 'none' : null)],
       ['Instruments', instr.length ? instr.join(', ') : f.grain_mot ? 'none heard' : null],
     ];
-    bloc(el.querySelector('.mots'), JSON.stringify(mots), () =>
-      mots.map(([k, w]) =>
-        h(
-          'div',
-          { class: 'mot' },
-          h('span', { class: 'k', text: k }),
-          h('span', { class: `w${w ? '' : ' vide'}`, text: w ?? 'not heard yet' }),
-        ),
-      ),
+    const mo = el.querySelector('.mots');
+    if (!mo.__fait) {
+      mo.__fait = true;
+      mo.append(
+        pole('brillance', 'Brightness', 'dull', 'bright'),
+        pole('grain', 'Grain', 'smooth', 'rough'),
+        pole('espace', 'Space', 'dry', 'reverberant'),
+        pole('dynamique', 'Dynamics', 'squashed', 'airy'),
+        h('div', { class: 'puces voix' }),
+      );
+    }
+    majPole(mo, 'brillance', f.brillance, mots[0][1]);
+    majPole(mo, 'grain', f.grain, mots[1][1]);
+    majPole(mo, 'espace', f.espace, mots[2][1]);
+    majPole(mo, 'dynamique', f.dynamique, mots[3][1]);
+    bloc(mo.querySelector('.voix'), JSON.stringify(mots.slice(4)), () =>
+      f.grain_mot
+        ? [
+            h('span', { class: `puce${voix ? ' on' : ''}`, text: voix ? `voice: ${voix}` : 'no voice' }),
+            ...(instr.length
+              ? instr.map((x) => h('span', { class: 'puce on', text: x }))
+              : [h('span', { class: 'puce', text: 'no instrument heard' })]),
+          ]
+        : [],
     );
     const props = Object.entries(f.tags_proposes || {})
       .map(([k, s]) => tagSonEn(k, s))
@@ -2024,19 +3024,20 @@ async function demarrer() {
         h(
           'div',
           { class: 'bloc' },
+          titreBloc(`${loops.length} loops, one square each`, ''),
+          h('div', { class: 'biblio grande' }),
           h(
-            'div',
-            { class: 'chiffres' },
-            h('div', null, h('b', { text: loops.length }), h('span', { text: 'loops in the catalog' })),
-            h('div', null, h('b', { class: 'n-pool' }), h('span', { class: 'l-pool' })),
-            h('div', null, h('b', { text: vieilles }), h('span', { text: 'old ones, kept out' })),
-            h(
-              'div',
-              null,
-              h('b', { text: dessus }),
-              h('span', { text: 'masks and one-shots, never in a pair' }),
-            ),
+            'p',
+            { class: 'leg-biblio grande' },
+            h('span', null, h('i', { class: 'ecran' }), 'on screen now'),
+            h('span', null, h('i', { class: 'joue' }), 'already played'),
+            h('span', null, h('i', { class: 'vivier' }), 'the edit can pick it now'),
+            h('span', null, h('i'), `not now (${vieilles} old, ${dessus} masks and one-shots, other style)`),
           ),
+        ),
+        h(
+          'div',
+          { class: 'bloc' },
           titreBloc('The timeline of the composition', ''),
           h(
             'div',
@@ -2065,14 +3066,15 @@ async function demarrer() {
           h('div', { class: 'carte-loop' }),
         ),
       );
+      el.__biblio = loops.length ? grilleBiblio(el.querySelector('.biblio')) : null;
       el.querySelector('.traits').innerHTML =
         `<svg viewBox="0 0 ${maxCol + 1} 36" preserveAspectRatio="none" aria-hidden="true"><path d="${ticks}"/></svg>`;
     }
     const pool = M.vivier(loops, v.mood, v.familles);
-    texte(el.querySelector('.n-pool'), String(pool.length));
+    if (el.__biblio) el.__biblio(idsEcran(), S.vusEcran, vivierActuel());
     texte(
-      el.querySelector('.l-pool'),
-      `in the pool for ${v.mood === 'house' || v.mood === 'techno' ? v.mood : 'all styles'} now`,
+      el.querySelector('.bloc:nth-child(1) h3 .droite'),
+      `${pool.length} the edit can pick ${v.mood === 'house' || v.mood === 'techno' ? `for ${v.mood}` : 'now'}`,
     );
     const ecran = aLEcran();
     const reste = laReste();
@@ -2100,7 +3102,7 @@ async function demarrer() {
       ),
     );
     texte(
-      el.querySelector('.bloc:nth-child(1) h3 .droite'),
+      el.querySelector('.bloc:nth-child(2) h3 .droite'),
       reste ? `±${M.VOISINAGE} columns around ${reste.nom}` : '',
     );
     const voisins =
@@ -2112,7 +3114,7 @@ async function demarrer() {
     const ids = new Set(ecran.map((x) => x.loop.id));
     const poolIds = new Set(pool.map((l) => l.id));
     texte(
-      el.querySelector('.bloc:nth-child(2) h3 .droite'),
+      el.querySelector('.bloc:nth-child(3) h3 .droite'),
       voisins.length ? `${voisins.length} loops, dimmed = not in the pool` : '',
     );
     bloc(el.querySelector('.mur'), voisins.map((l) => l.id).join() + [...ids].join(), () =>
@@ -2162,16 +3164,6 @@ async function demarrer() {
       ];
     });
   };
-  const garde = M.GARDE_MONTAGE;
-  if (garde.sujet) {
-    $('#p8-lien').textContent =
-      `Then the link. A candidate shares at least one tag with the loop that stays (V46), and the draw follows Rien's own edits. In ${regles.paires_mesurees ? `its ${regles.paires_mesurees}` : 'his'} real cuts, two loops in a row kept the same subject ${pc(garde.sujet[0])} of the time, against ${pc(garde.sujet[1])} by chance${garde['thème'] ? `, and the same theme ${pc(garde['thème'][0])}, against ${pc(garde['thème'][1])}` : ''} (V84). A neighbor within ${M.VOISINAGE} columns on the timeline counts double (V44).`;
-  } else {
-    $('#p8-lien').textContent =
-      `Then the link. A candidate shares at least one tag with the loop that stays, and rare tags weigh more (V46). A neighbor within ${M.VOISINAGE} columns on the timeline counts as one more link (V44).`;
-  }
-  $('#p8-paires').textContent =
-    `Now and then, a pair that Rien cut by hand comes back: never in the first ${min(M.PAIRE_PAS_AVANT_S)} minutes, then 1 time in ${Math.round(1 / M.PAIRE_CHANCE)}, at least ${min(M.PAIRE_ECART_S)} minutes apart (V83).`;
   const lesPaires = M.partenaires(M.PAIRES_V52);
   const tagsCourts = (ts) =>
     [...ts]
@@ -3034,9 +4026,12 @@ export {
   SIM_PAS,
   VITRINE,
   accordEn,
+  avenirParties,
   borne,
   candidats,
+  demiTon,
   demosValables,
+  gamme,
   geste,
   gesteEn,
   horloge,
@@ -3047,13 +4042,20 @@ export {
   nomMotif,
   nomPartie,
   nomSource,
+  noteDuTemps,
   noteEn,
+  nouveauxParis,
   ordreDemos,
+  parTheme,
+  partNiveau,
+  pasDe,
   pc,
+  placePhrase,
   plans,
   plansTient,
   raisonEn,
   reglesActives,
+  segmentsParties,
   simBreak,
   simCoupe,
   simSilence,
@@ -3063,6 +4065,7 @@ export {
   styleNom,
   suitEn,
   suiteEn,
+  suivreParis,
   tagEn,
   tagSonEn,
   titreDemo,

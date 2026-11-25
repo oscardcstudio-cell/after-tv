@@ -109,7 +109,7 @@
                     <path d="M4 9v6h4l5 4V5L8 9H4z" />
                     <path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" /></svg
                   ><b>Sound</b><span>computer, link, radio, mic</span>
-                  <dl class="params" data-p="son"></dl
+                  <div class="params" data-p="son"></div
                 ></a>
                 <i class="flux" aria-hidden="true"><em>audio, 48 kHz</em></i>
                 <a class="noeud" href="#s2"
@@ -117,7 +117,7 @@
                     <path d="M7 10a5 5 0 0 1 10 0c0 3-3 4-3 7a3 3 0 0 1-6 0" />
                     <path d="M10 10a2 2 0 0 1 4 0" /></svg
                   ><b>Ear</b><span>tempo, kick, key, genre</span>
-                  <dl class="params" data-p="oreille"></dl
+                  <div class="params" data-p="oreille"></div
                 ></a>
                 <i class="flux" aria-hidden="true"><em>beats, kick, bands, notes</em></i>
                 <a class="noeud" href="#s4"
@@ -125,7 +125,7 @@
                     <path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a3 3 0 0 0-3-1z" />
                     <path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1" /></svg
                   ><b>Brain</b><span>part of the track, mode</span>
-                  <dl class="params" data-p="cerveau"></dl
+                  <div class="params" data-p="cerveau"></div
                 ></a>
                 <i class="flux" aria-hidden="true"><em>part, mode, bar</em></i>
                 <a class="noeud" href="#s8"
@@ -134,7 +134,7 @@
                     <circle cx="6" cy="17" r="2.5" />
                     <path d="M8 8.5 20 17M8 15.5 20 7" /></svg
                   ><b>Edit</b><span>picks and cuts the loops</span>
-                  <dl class="params" data-p="montage"></dl
+                  <div class="params" data-p="montage"></div
                 ></a>
                 <i class="flux" aria-hidden="true"><em>loops, cues, cuts</em></i>
                 <a class="noeud" href="#s10"
@@ -143,7 +143,7 @@
                     <path d="M9 21h6M12 17v4" /></svg
                   ><b>Screen</b><span>the film, live</span
                   ><canvas class="ecran-direct" width="480" height="270" aria-label="The film, live"></canvas>
-                  <dl class="params" data-p="ecran"></dl
+                  <div class="params" data-p="ecran"></div
                 ></a>
               </div>
               <div class="schema-sources">
@@ -152,7 +152,7 @@
                     <circle cx="11" cy="11" r="6" />
                     <path d="m20 20-4.5-4.5" /></svg
                   ><b>Shazam, Discogs</b><span>name the track and its style</span>
-                  <dl class="params" data-p="titre"></dl
+                  <div class="params" data-p="titre"></div
                 ></a>
                 <a class="noeud annexe bibliotheque" href="#s7" data-flux="tags, videos"
                   ><svg viewBox="0 0 24 24" aria-hidden="true">
@@ -160,7 +160,7 @@
                     <rect x="10" y="4" width="5" height="16" />
                     <path d="m17 5 4 1-3 14-4-1" /></svg
                   ><b>Library</b><span>Rien's loops, online</span>
-                  <dl class="params" data-p="biblio"></dl
+                  <div class="params" data-p="biblio"></div
                 ></a>
               </div>
               <figcaption>
@@ -202,18 +202,7 @@
             <p class="numero" aria-hidden="true">01</p>
             <p class="station">Sound</p>
             <h2>The signal</h2>
-            <p>
-              On every beat the sound is measured: its level in three bands, its key, the chord and the line
-              of notes it plays, its brightness, the filter it goes through, its space and its dynamics.
-            </p>
-            <p>
-              It comes from the computer, a pasted link, Mutant Radio (Tbilisi), Intergalactic FM or the
-              microphone. Shazam names the track, except on Intergalactic FM, which gives its titles itself.
-            </p>
-            <p>
-              Sound under -60 dB in the mids and highs counts as silence. After 4 seconds of it, the screen
-              goes black with AFTER TV in the middle. The film returns with the sound (V74).
-            </p>
+            <p>Every beat, the sound is measured. Below -60 dB for 4 seconds, the screen goes black (V74).</p>
           </div>
           <div class="vue" id="v1"></div>
         </section>
@@ -224,19 +213,15 @@
             <p class="station">Ear</p>
             <h2>The ear</h2>
             <p>
-              The ear is
+              The ear finds the tempo, the first beat of each bar and the kick, and guesses the genre every 5
+              seconds.
+            </p>
+            <p class="note">
+              Ear:
               <a href="https://github.com/hssnadr/live-audio-analyzer" target="_blank" rel="noopener"
                 >live-audio-analyzer</a
-              >, an open-source library by hssnadr, loaded from its repository at a fixed version. Every 256
-              samples, it runs a 1024-point FFT on the sound.
-            </p>
-            <p>
-              From the attacks it finds the tempo and the first beat of each bar. A separate detector catches
-              the kick drum. Every 5 seconds, YAMNet, Google's sound classifier, names the genre.
-            </p>
-            <p>
-              The genre steers the edit only when the visitor picks Auto. With a style chosen (House by
-              default), the genre is shown here and does nothing else.
+              >
+              by hssnadr. Genre: YAMNet.
             </p>
           </div>
           <div class="vue" id="v2"></div>
@@ -248,16 +233,8 @@
             <p class="station">Ear</p>
             <h2>The groove of the bar</h2>
             <p>
-              Every kick, snare and hi-hat hit lands on one of the bar's 16 steps. Read together, the three
-              lines get a name: four-on-the-floor, broken beat, light kick or no kick.
-            </p>
-            <p>
-              When the name changes, the edit swaps its dominant loop at the end of that bar (V71), at most
-              once every 8 bars.
-            </p>
-            <p>
-              The ear also catches a sudden silence, the stop before a drop. When After TV follows Rien's
-              dashboard, it cuts to black, and the first kick brings the image back.
+              Kick, snare and hi-hat land on the 16 steps of the bar. When the pattern changes, the main loop
+              changes (V71).
             </p>
           </div>
           <div class="vue" id="v3"></div>
@@ -269,17 +246,8 @@
             <p class="station">Brain</p>
             <h2>Where we are in the track</h2>
             <p>
-              The brain counts bars, groups them into 8-bar phrases, and names the part it hears: intro,
-              verse, build-up, chorus, break or outro, with its confidence.
-            </p>
-            <p>
-              It also notices when a part or a riff comes back, and can announce a drop a few bars ahead. The
-              edit uses all three. A returning part or riff brings back the loops it had the first time. An
-              announced drop gets its loops ready one bar early.
-            </p>
-            <p>
-              The part also sets how many loops share the screen, and how long the loops around the dominant
-              one stay.
+              The brain names the part it hears and bets on what comes next. Under the cursor, each bet turns
+              out right or wrong.
             </p>
           </div>
           <div class="vue" id="v4"></div>
@@ -290,11 +258,7 @@
             <p class="numero" aria-hidden="true">05</p>
             <p class="station">Brain</p>
             <h2>Four modes</h2>
-            <p>Beneath the parts, the edit plays one of four modes: the four buttons on Rien's controller.</p>
-            <p>
-              Every mode change, and every tool the autopilot touches, goes into a journal with its reason.
-              The latest entries show here.
-            </p>
+            <p>Under the parts, the edit plays one of four modes: the four buttons on Rien's controller.</p>
           </div>
           <div class="vue" id="v5"></div>
         </section>
@@ -304,19 +268,7 @@
             <p class="numero" aria-hidden="true">06</p>
             <p class="station">Brain</p>
             <h2>The texture of the sound</h2>
-            <p>
-              Beyond rhythm, the ear describes the material of the sound: bright or dull, smooth or rough, dry
-              or reverberant, squashed or airy, with or without a voice or an instrument.
-            </p>
-            <p>
-              Each word points to visual tags. A dull sound asks for low-key images, a rough one for hard
-              lines and square shapes. These tags break ties: among loops that fit the edit equally well, the
-              ones that match the sound win.
-            </p>
-            <p>
-              The ear measures more than the edit uses so far. What is measured but not wired is listed at the
-              bottom.
-            </p>
+            <p>What the sound is made of. When the edit hesitates, the images that match it win.</p>
           </div>
           <div class="vue" id="v6"></div>
         </section>
@@ -327,12 +279,7 @@
             <p class="station">Edit</p>
             <h2>The library</h2>
             <p>
-              Every loop comes from Rien's Resolume composition: twelve volumes of film, cut shot by shot.
-            </p>
-            <p>
-              The composition is sorted in chapters along its timeline, so neighboring columns tend to belong
-              together. Each loop carries a card of tags: speed, the modes it suits, house or techno, and a
-              visual block (tone, color, lines, movement, shape, space, framing, subject).
+              Every loop comes from Rien's Resolume composition, cut shot by shot, sorted by theme and tagged.
             </p>
           </div>
           <div class="vue" id="v7"></div>
@@ -343,19 +290,9 @@
             <p class="numero" aria-hidden="true">08</p>
             <p class="station">Edit</p>
             <h2>Choosing the next loop</h2>
-            <p>
-              When a loop leaves, its replacement is drawn next to the loop that stays. First, the pool: loops
-              that fit the mood, are not on screen, and have not played recently (V21).
-            </p>
-            <p id="p8-lien">
-              Then the link. A candidate shares at least one tag with the loop that stays (V46), and the draw
-              follows Rien's own edits.
-            </p>
-            <p id="p8-paires">Now and then, a pair that Rien cut by hand comes back.</p>
+            <p>The next loop comes from the pool and shares a tag with the loop that stays (V46).</p>
             <p class="note">
-              The candidates shown here come from running the real draw (<code>montage.js</code>, the browser
-              copy of the one in <code>live.py</code>) on the real catalog, starting from the loop on screen
-              now.
+              Real draw, real catalog: <code>montage.js</code>, the browser copy of <code>live.py</code>.
             </p>
           </div>
           <div class="vue" id="v8"></div>
@@ -367,14 +304,7 @@
             <p class="station">Edit</p>
             <h2>Cutting on the beat</h2>
             <p>
-              Cuts land on the beat. Each drop or break opens on the kick, moves to the snare, then goes to
-              the hi-hat when the end seems near. A fast edit gets to the snare sooner (V98).
-            </p>
-            <p>
-              Around the dominant loop, one loop changes every 2 to 4 bars depending on the part (V41), and
-              never more than one at a time: the pair x y becomes x z (V42). The edit counts in bars, never in
-              seconds, so it breathes with the tempo; a mask laid on top holds 16 bars (V90). Inside a loop,
-              cue points let the edit jump to another moment of the same shot.
+              Cuts land on the beat: kick, then snare, then hi-hat (V98). One loop changes at a time (V42).
             </p>
           </div>
           <div class="vue" id="v9"></div>
@@ -386,24 +316,8 @@
             <p class="station">Screen</p>
             <h2>The screen</h2>
             <p>
-              Resolume, rebuilt in the page: up to three layers, stacked as in Arena. Each layer holds two
-              videos. The next loop loads in the hidden one and comes to the front only when a frame is ready
-              at the chosen cue, so the screen never flashes black.
-            </p>
-            <p>
-              Trails are Resolume's Trails effect, rebuilt in the page: earlier frames stay for a moment, then
-              fade. Rien cannot predict the track, so the autopilot bets. After 32 bars of a drop, the trails
-              rise on the last 2 bars of each 16-bar phrase. If a break arrives, they hold its first 2 bars
-              and fade, and the bet was right. If the drop continues, they switch off, and the bet was wrong.
-              The console scores every bet (V99).
-            </p>
-            <p>
-              Alpha layers swap on the beat. 50 Add lays a layer's light over what is under it. In CSS, that
-              is <code>mix-blend-mode: plus-lighter</code>.
-            </p>
-            <p>
-              The videos are H.264 with a keyframe every 12 frames, so jumping to a cue point is instant. They
-              are served from Cloudflare R2 for about $0 to $1 a month.
+              Resolume, rebuilt in the page: up to three layers, each with two videos, so the screen never
+              flashes black.
             </p>
           </div>
           <div class="vue" id="v10"></div>
@@ -414,14 +328,7 @@
             <p class="numero" aria-hidden="true">11</p>
             <p class="station">Rules</p>
             <h2>Rien's rules</h2>
-            <p>
-              Every rule on this page came from Rien watching the edit and correcting it. Each has a number in
-              Rien's codex.
-            </p>
-            <p>
-              Some rules only act once every few minutes. So here are five of them, played out on a made-up
-              track at 120 BPM. When one acts in the track playing now, its tab gets a dot.
-            </p>
+            <p>Five of Rien's rules, played out on a made-up track at 120 BPM.</p>
           </div>
           <div class="vue" id="v11"></div>
         </section>
@@ -432,17 +339,10 @@
             <p class="station">Rules</p>
             <h2>Where it comes from</h2>
             <p>
-              People kept asking how to get these images. After TV is the answer: a program that edits the
-              archive live, on any music, in a website, for any TV, any projector, a bar or a beginner DJ.
+              People kept asking how to get these images. After TV is the answer: rules, written each time
+              Rien corrected the edit.
             </p>
-            <p>
-              The 2024 dossier imagined an AI trained by watching Rien play for hours. We wrote rules instead,
-              each one after Rien watched the edit and corrected it (step 11).
-            </p>
-            <p>
-              Cinema's craft of framing and sequence shots guides the choice of films. Two rules decide which
-              shots qualify (V91, V92).
-            </p>
+            <p>Two rules pick the shots (V91, V92).</p>
           </div>
           <div class="vue" id="v12"></div>
         </section>
