@@ -982,16 +982,6 @@ async function demarrer() {
         { duration: p, easing: 'linear' },
       );
     }
-    const st = document.querySelectorAll('#v0 .chaine > div');
-    st.forEach((d, i) =>
-      setTimeout(
-        () => {
-          st.forEach((x) => x.classList.toggle('bat', x === d));
-        },
-        (p / st.length) * i,
-      ),
-    );
-    setTimeout(() => st.forEach((x) => x.classList.remove('bat')), p * 0.98);
     const t0 = Number.isInteger(S.pos) ? S.pos : v.temps ? v.temps - 1 : null;
     if (t0 != null) [0, 1, 2, 3].forEach((k) => setTimeout(() => placeTete(t0 * 4 + k), (p / 4) * k));
   }

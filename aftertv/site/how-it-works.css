@@ -506,12 +506,6 @@ h2 {
 .chaine .discret {
   margin-top: auto;
 }
-.chaine > div.bat {
-  background: var(--fill-press);
-}
-.chaine > div.bat h3 {
-  color: var(--ink);
-}
 .chaine .vignettes {
   display: flex;
   gap: 4px;
