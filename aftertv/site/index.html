@@ -1280,8 +1280,7 @@
       const suitDashboard = !!config.pilote || dansCadre || paramDirect !== null;
       const adresseRelais = paramDirect === '1' ? config.direct || null : paramDirect || null;
       const visiteur = dansCadre ? null : lireReglages();
-      const moodVisiteur = (s) =>
-        ['house', 'techno', 'tout'].includes(s) ? s : s === 'auto' ? 'tout' : 'house';
+      const moodVisiteur = (s) => (['house', 'techno', 'tout'].includes(s) ? s : 'house');
       let mood = reglage('mood', null) ?? (visiteur ? moodVisiteur(visiteur.style) : 'tout');
       const bpm = Number(reglage('bpm', 126)) || 126;
       let montage = null;

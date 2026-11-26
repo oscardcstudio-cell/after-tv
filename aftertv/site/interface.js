@@ -10,6 +10,7 @@ const T = {
   tourner: 'Turn your phone sideways to watch the film.',
   tournerIcone: 'A phone turning from upright to sideways',
   fermer: 'Close',
+  github: 'The code of After TV, open source (MIT)',
   retour: 'Feedback',
   retourAide: 'What went wrong? Say what you were doing, the page adds what it was playing.',
   retourEnvoyer: 'Send',
@@ -40,7 +41,7 @@ const T = {
   aproposTexte: [
     'You play your music and a film cuts itself to it, live, shot after shot.',
     "Rien is a VJ duo that has played techno nights for five years. Rien's library holds 1,137 videos, about 12 hours, cut shot by shot and put online in 12 volumes.",
-    'People kept asking to have the library at home, so Rien made it play itself.',
+    "My friends were asking us for the videos during after parties. So we're giving all of it.",
   ],
   volumes:
     'Vol.1 Nature · Vol.2 City · Vol.3 Riot · Vol.4 Cinema · Vol.6 War · Vol.8 Cyber · Vol.9 Space · Vol.10 Music Videos · Vol.11 House',
@@ -863,6 +864,15 @@ function construirePanneau() {
       'div',
       { class: 'tete-panneau' },
       el('span', { class: 'etiquette' }, T.titre),
+      el('a', {
+        id: 'github-lien',
+        class: 'fantome retour-bouton github-lien',
+        href: 'https://github.com/oscardcstudio-cell/after-tv',
+        target: '_blank',
+        rel: 'noopener',
+        title: T.github,
+        html: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span>',
+      }),
       el(
         'button',
         {

@@ -1288,7 +1288,7 @@ h2 {
   position: relative;
 }
 .mur img,
-.cand img,
+.cand-tete img,
 .pile img,
 .carte-loop img {
   display: block;
@@ -1367,41 +1367,89 @@ h2 {
   object-fit: cover;
   outline: 1px solid rgba(255, 255, 255, 0.1);
 }
-.cands {
-  display: grid;
+.communs {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--s2);
-}
-.cand {
-  display: grid;
-  grid-template-columns: 120px minmax(0, 1fr) 8ch;
-  gap: var(--s4);
   align-items: center;
-  padding: var(--s2);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
+  margin: 0 0 var(--s4);
 }
-.cand .n {
+.communs > span:first-child {
+  font-size: var(--t-doc-meta);
+  color: var(--ink-muted);
+  margin-right: var(--s1);
+}
+.matrice {
+  --lab: 10rem;
+  display: grid;
+}
+.lien {
+  display: grid;
+  grid-template-columns: var(--lab) repeat(var(--n), minmax(0, 1fr));
+  column-gap: var(--s1);
+  align-items: stretch;
+  border-top: 1px solid var(--rule);
+}
+.lien.entete {
+  border-top: 0;
+}
+.lien.voisin + .lien {
+  border-top-color: var(--rule-strong);
+}
+.lien .lab {
+  align-self: center;
+  padding: 6px var(--s2) 6px 0;
+  font-size: var(--t-doc-meta);
+  line-height: 1.3;
   overflow-wrap: anywhere;
 }
-.cand .p {
-  text-align: right;
+.lien.entete .lab,
+.lien.voisin .lab {
+  color: var(--ink-muted);
+}
+.lien.entete .lab {
+  align-self: end;
+  padding-bottom: var(--s2);
+}
+.case {
+  display: grid;
+  place-items: center;
+  min-height: 32px;
+}
+.case::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.case.plein::before {
+  background: var(--plein);
+  box-shadow: none;
+}
+.cand-tete {
+  margin: 0;
+  min-width: 0;
+  padding: 4px 4px var(--s2);
+}
+.cand-tete figcaption {
+  margin-top: 4px;
+  font-size: var(--t-meta);
+  line-height: 1.25;
+  min-height: 2.5em;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cand-tete b {
+  display: block;
+  margin-top: var(--s1);
+  font: 400 var(--t-doc) / 1.1 var(--font);
   font-variant-numeric: tabular-nums;
 }
-.cand .p small {
-  display: block;
-  color: var(--ink-muted);
-  font-size: var(--t-meta);
-}
-.cand.tire {
-  border-color: var(--ink);
+.lien .t {
   background: var(--fill-press);
-}
-.cand .puces {
-  margin-top: 6px;
-}
-.cand .puce {
-  min-height: 24px;
-  font-size: var(--t-meta);
 }
 .btn {
   font: 500 var(--t-meta) / 1 var(--font);
@@ -1440,10 +1488,11 @@ h2 {
   margin: var(--s4) 0;
 }
 .edl {
+  --ecran-h: 54px;
   display: grid;
-  grid-template-columns: 7ch minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) calc(var(--ecran-h) * 16 / 9);
   gap: 6px var(--s3);
-  align-items: center;
+  align-items: stretch;
 }
 .edl .lab {
   font: var(--label);
@@ -1451,9 +1500,39 @@ h2 {
   text-transform: uppercase;
   color: var(--ink-muted);
 }
+.tete-couche {
+  display: grid;
+  grid-template-rows: 22px auto;
+  min-width: 0;
+}
+.tete-couche .lab {
+  padding-top: 2px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.edl > .lab {
+  align-self: start;
+  padding-top: 2px;
+}
+.edl .ecran-direct {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  background: #000;
+  outline: 1px solid rgba(255, 255, 255, 0.1);
+  outline-offset: -1px;
+}
+.edl .ecran-direct.cachee {
+  opacity: 0.45;
+}
+.edl .ecran-direct.vide {
+  background: transparent;
+  outline: 1px dashed var(--rule);
+}
 .piste-edl {
   position: relative;
-  height: 56px;
+  height: calc(22px + var(--ecran-h));
   display: flex;
   gap: 0;
 }
@@ -1481,7 +1560,7 @@ h2 {
 }
 .seg i {
   flex: 1 1 0;
-  height: 30px;
+  height: var(--ecran-h);
   border-right: 1px solid #000;
 }
 .seg i.vu {
@@ -1493,9 +1572,13 @@ h2 {
 .seg.vide-seg {
   border-left-color: var(--rule);
 }
+.edl + .compte {
+  margin: var(--s3) 0 0;
+}
 .regle-temps {
   display: flex;
   height: 28px;
+  overflow: hidden;
 }
 .regle-temps i {
   flex: 1 1 0;
@@ -2168,12 +2251,26 @@ h2 {
   .entonnoir div:nth-child(n + 3) {
     border-top: 1px solid var(--rule);
   }
-  .cand {
-    grid-template-columns: 88px minmax(0, 1fr);
+  .lien {
+    grid-template-columns: repeat(var(--n), minmax(0, 1fr));
   }
-  .cand .p {
-    grid-column: 2;
-    text-align: left;
+  .lien .lab {
+    grid-column: 1 / -1;
+    padding: 6px 0 0;
+  }
+  .case {
+    min-height: 24px;
+  }
+  .cand-tete {
+    padding: 2px 2px var(--s2);
+  }
+  .edl {
+    --ecran-h: 36px;
+    column-gap: var(--s2);
+  }
+  .edl .lab {
+    font-size: 10px;
+    letter-spacing: 0.06em;
   }
   .couche {
     grid-template-columns: 3ch minmax(0, 1fr);

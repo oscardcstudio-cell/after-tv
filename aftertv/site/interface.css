@@ -1291,8 +1291,16 @@ html.interface #avance.fin time {
   cursor: pointer;
 }
 #suggestion-radio .ordi-suggestion[hidden],
-#suggestion-radio .ou-radio[hidden] {
+#suggestion-radio .ou-radio[hidden],
+#suggestion-radio .credit-mutant-suggestion[hidden] {
   display: none;
+}
+#suggestion-radio .mutant-suggestion > span:first-child {
+  letter-spacing: var(--track-button);
+  text-transform: uppercase;
+}
+#suggestion-radio .credit-mutant-suggestion {
+  color: var(--ink-muted);
 }
 #suggestion-radio .ordi-suggestion .meta,
 #suggestion-radio .ou-radio {
@@ -1354,7 +1362,8 @@ html.lecture #suggestion-radio p {
 @media (max-width: 720px) {
   #suggestion-radio {
     width: calc(100% - 2 * var(--s4));
-    padding: var(--s3) var(--s3) var(--s2);
+    padding: var(--s2) var(--s3) var(--s2);
+    gap: var(--s1);
   }
   #suggestion-radio .suggestion-titre {
     padding: 0 var(--s7);
@@ -1362,6 +1371,16 @@ html.lecture #suggestion-radio p {
   #suggestion-radio .chaines {
     width: 100%;
     gap: var(--s1);
+  }
+  #suggestion-radio .credit-mutant-suggestion,
+  #suggestion-radio .ou-radio {
+    display: none;
+  }
+  #suggestion-radio .ordi-suggestion {
+    min-height: 40px;
+  }
+  #suggestion-radio .credit-radio {
+    line-height: 1.3;
   }
   #suggestion-radio .chaine {
     flex: 1 1 0;
@@ -1467,6 +1486,19 @@ html.lecture #suggestion-radio p {
 .sequenceur i.x {
   background: var(--ink);
 }
+.coupes-sur {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s4);
+}
+.chip[data-joue='true']::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-right: var(--s2);
+  border-radius: 50%;
+  background: currentColor;
+}
 #panneau .puce-mode {
   display: inline-block;
   justify-self: start;
@@ -1514,6 +1546,9 @@ html.lecture #suggestion-radio p {
   gap: var(--s2);
   font-size: var(--t-meta);
   color: var(--ink-muted);
+}
+.lampe[hidden] {
+  display: none;
 }
 .lampe i {
   width: 10px;
@@ -2001,6 +2036,16 @@ html.lecture #suggestion-radio p {
   font-size: var(--t-meta);
   letter-spacing: var(--track-button);
   text-transform: uppercase;
+}
+#panneau .github-lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: inherit;
+}
+#panneau .github-lien + .retour-bouton {
+  margin-left: 0;
 }
 #panneau .retour-bouton[aria-expanded='true'] {
   background: var(--ink);

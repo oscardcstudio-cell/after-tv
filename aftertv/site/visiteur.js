@@ -12,6 +12,7 @@ import {
 } from './radio.js';
 import { demarrerAudience } from './audience.js';
 import { lecteurDuLien, SERVICES } from './liens.js';
+import { chercherTitreLien, titreOnglet } from './titre-lien.js';
 import { creerLecteur } from './lecteur.js';
 import { creerTitre } from './titre.js';
 import { creerAuto } from './vhs.js';
@@ -84,6 +85,12 @@ const T = {
   appuyerPlay: 'Press Play in the player.',
   f11: 'While this tab is shared, fullscreen stays inside the tab. Press F11 to fill the screen.',
   pasDeSonOnglet: 'The tab shared no sound. Tick "Share tab audio", then try again.',
+  lienDouble: 'Pause or mute the other tab, or the music plays twice.',
+  coupesSur: 'Cuts on',
+  dAuto: 'Auto',
+  dKick: 'Kick',
+  dSnare: 'Snare',
+  dHihat: 'Hi-hat',
 };
 const svg = (d, taille, cls) =>
   `<svg class="${cls}" viewBox="0 0 24 24" width="${taille}" height="${taille}" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
@@ -241,6 +248,12 @@ function installerVisiteur(api) {
     enAttente = false;
   let lecteur = null;
   let messageLien = '';
+  let titreLien = null;
+  let etatLien = null;
+  let lienJeton = 0;
+  let ongletProbable = null;
+  let declencheur = 'auto';
+  let declencheurJoue = null;
   const sourceMoteur = () => !!source && !radioSeule;
   const visiteurActif = () => sourceMoteur() && !direct();
   const tapDispo = () => visiteurActif() && ecoute;
@@ -260,6 +273,7 @@ function installerVisiteur(api) {
           style: styleMoteur(r.style),
           tags: [],
           coupesRapides: coupesRapidesEffectives(r, moinsDAnimation),
+          declencheur,
         });
         brancher(m);
         moteur = m;
@@ -298,8 +312,12 @@ function installerVisiteur(api) {
       },
       suivi: (e) => {
         etatTitre = e;
+        titreProbable(e);
         majReconnaissance();
       },
+    });
+    m.on('capture', ({ label }) => {
+      ongletProbable = titreOnglet(label, document.title);
     });
     const versDoc = (msg) => {
       try {
@@ -320,6 +338,11 @@ function installerVisiteur(api) {
       temps = Number.isFinite(pos) ? pos : (temps + 1) % 4;
       majTap();
       majSequenceur(r, temps);
+      const d = e?.outils?.declencheur || null;
+      if (d !== declencheurJoue) {
+        declencheurJoue = d;
+        majCoupes();
+      }
       vhsTemps(e, r);
     });
     m.on('tempo', (t) => {
@@ -344,7 +367,8 @@ function installerVisiteur(api) {
       if (s.phase === 'listening') {
         ecoute = true;
         erreur = null;
-        if (['system', 'tab', 'mic'].includes(s.source) || (s.source === 'radio' && estMutant(radioN)))
+        if (lienDonneTitre() && ['system', 'tab'].includes(s.source)) appliquerTitreLien();
+        else if (['system', 'tab', 'mic'].includes(s.source) || (s.source === 'radio' && estMutant(radioN)))
           titreAuto?.demarrer();
         else titreAuto?.arreter();
         if (['system', 'radio', 'mic'].includes(s.source))
@@ -375,6 +399,7 @@ function installerVisiteur(api) {
     etatTitre = null;
     reconnu = null;
     moodEntendu = null;
+    ongletProbable = null;
     let promesse;
     if (src === 'radio') {
       infos = { radio: nomRadio(radioN), morceau: null };
@@ -705,7 +730,59 @@ function installerVisiteur(api) {
     }
     direLien('');
     montrerLecteur(l);
-    choisir('tab');
+    chercherTitre(l);
+    if (captureEnCours()) appliquerTitreLien();
+    else choisir('tab');
+    api.avis?.(T.lienDouble);
+    majTout();
+  }
+  const captureEnCours = () =>
+    ecoute && !radioSeule && !direct() && (source === 'system' || source === 'tab') && !!moteur?.ecoute;
+  const lienDonneTitre = () => !!lecteur && (!!titreLien || etatLien === 'cherche');
+  async function chercherTitre(l) {
+    const ici = ++lienJeton;
+    titreLien = null;
+    etatLien = 'cherche';
+    const m = await chercherTitreLien(l.adresse);
+    if (ici !== lienJeton || !lecteur) return;
+    titreLien = m;
+    etatLien = m ? 'trouve' : 'rate';
+    appliquerTitreLien();
+    majReconnaissance();
+  }
+  function appliquerTitreLien() {
+    if (!lecteur) return;
+    const capte = ecoute && ['system', 'tab'].includes(source);
+    if (!titreLien) {
+      if (etatLien === 'rate' && capte) titreAuto?.demarrer();
+      return;
+    }
+    if (capte) titreAuto?.arreter();
+    const neuf = reconnu !== titreLien;
+    reconnu = titreLien;
+    moteur?.morceau?.(titreLien);
+    majEcoute();
+    majReconnaissance();
+    if (neuf) completerStyles(titreLien);
+  }
+  function titreProbable(e) {
+    if (!ongletProbable || reconnu || !e?.actif || !['rate', 'erreur', 'plafond'].includes(e.shazam?.statut))
+      return;
+    const mo = {
+      ...ongletProbable,
+      album: null,
+      label: null,
+      annee: null,
+      genre: null,
+      genres: [],
+      styles: [],
+      probable: true,
+    };
+    ongletProbable = null;
+    reconnu = mo;
+    moteur?.morceau?.(mo);
+    majEcoute();
+    completerStyles(mo);
   }
   function direLien(texte) {
     messageLien = texte;
@@ -727,6 +804,13 @@ function installerVisiteur(api) {
     lecteur.detruire();
     $('lecteur-lien')?.remove();
     lecteur = null;
+    lienJeton++;
+    titreLien = null;
+    etatLien = null;
+    if (reconnu?.source === 'lien') {
+      reconnu = null;
+      moteur?.morceau?.(null);
+    }
     majLecteur();
   }
   const ICONE_LECTURE =
@@ -988,6 +1072,34 @@ function installerVisiteur(api) {
               el('i', { class: k % 16 && k % 4 === 0 ? 'q' : null, 'data-i': k % 16 }),
             ),
           ),
+          el(
+            'div',
+            { class: 'coupes-sur' },
+            el('span', { class: 'meta' }, T.coupesSur),
+            el(
+              'div',
+              { class: 'chips', role: 'radiogroup', 'aria-label': T.coupesSur, id: 'tap-coupes' },
+              ...[
+                ['auto', T.dAuto],
+                ['kick', T.dKick],
+                ['snare', T.dSnare],
+                ['hihat', T.dHihat],
+              ].map(([v, nom]) =>
+                el(
+                  'button',
+                  {
+                    class: 'chip',
+                    type: 'button',
+                    role: 'radio',
+                    'data-declencheur': v,
+                    'aria-checked': String(v === declencheur),
+                    onclick: () => choisirDeclencheur(v),
+                  },
+                  nom,
+                ),
+              ),
+            ),
+          ),
           el('span', { class: 'puce-mode', id: 'tap-mode', hidden: true }),
           pli(
             'reglages-tap',
@@ -1036,10 +1148,23 @@ function installerVisiteur(api) {
   function taper() {
     if (tapDispo()) moteur?.tap();
   }
+  function choisirDeclencheur(v) {
+    declencheur = v;
+    moteur?.regler({ declencheur: v });
+    majCoupes();
+  }
+  function majCoupes() {
+    for (const b of document.querySelectorAll('[data-declencheur]')) {
+      const v = b.dataset.declencheur;
+      b.setAttribute('aria-checked', String(v === declencheur));
+      if (v !== 'auto' && v === declencheurJoue) b.dataset.joue = 'true';
+      else delete b.dataset.joue;
+    }
+  }
   function majEcoute() {
     const s = document.querySelector('[data-section="ecoute"]');
     if (!s) return;
-    const montre = !!source;
+    const montre = !!source || (!!lecteur && !!reconnu);
     const corps = $('ecoute-corps');
     const lignes = [];
     if (source === 'radio') {
@@ -1065,14 +1190,15 @@ function installerVisiteur(api) {
               el('a', { href: SITE, target: '_blank', rel: 'noopener' }, T.lienIgfm),
             ),
       );
-    } else if (source) {
+    } else if (source || lecteur) {
       if (reconnu) {
         const l1 = ligneMorceau(reconnu);
         if (l1) lignes.push(el('p', { class: 'ligne-morceau' }, l1));
         const l2 = [reconnu.annee, reconnu.label].filter(Boolean).join(' · ');
         if (l2) lignes.push(el('p', { class: 'ligne-annee' }, l2));
       }
-      lignes.push(el('p', { class: ecoute && (genre || tempo) ? '' : 'muet' }, texteEcoute() || T.ecoute));
+      if (source)
+        lignes.push(el('p', { class: ecoute && (genre || tempo) ? '' : 'muet' }, texteEcoute() || T.ecoute));
     }
     const cle = lignes.map((l) => l.textContent).join('|');
     if (corps.dataset.cle !== cle) {
@@ -1286,6 +1412,7 @@ function installerVisiteur(api) {
         el(
           'div',
           { class: 'lampes', id: 'style-lampes' },
+          lampe('lien', 'Link'),
           lampe('shazam', 'Shazam'),
           lampe('audd', 'AudD'),
           lampe('discogs', 'Discogs'),
@@ -1311,7 +1438,18 @@ function installerVisiteur(api) {
     const styles = radio
       ? [...stylesRadio.genres, ...stylesRadio.styles]
       : [...(reconnu?.genres || []), ...(reconnu?.styles || [])];
+    const lampeLien = bloc.querySelector('[data-lampe="lien"]');
+    lampeLien.hidden = !lecteur;
     const etats = {
+      lien: !lecteur
+        ? ''
+        : etatLien === 'trouve'
+          ? 'trouve'
+          : etatLien === 'cherche'
+            ? 'cherche'
+            : etatLien === 'rate'
+              ? 'rate'
+              : '',
       shazam: st(t.shazam),
       audd: st(t.audd),
       discogs: radio ? stylesRadio.etat : styles.length ? 'trouve' : cherche ? 'cherche' : '',
@@ -1400,7 +1538,7 @@ function installerVisiteur(api) {
       return ligneMorceau(m) || (estMutant(radioN) ? T.mutantLigne : T.surIgfm(nomRadio(radioN)));
     }
     if (direct()) return ($('titre')?.textContent || '').trim().replace(/\s+—\s+/g, ' - ');
-    if (source && reconnu) return ligneMorceau(reconnu) || texteEcoute();
+    if ((source || lecteur) && reconnu) return ligneMorceau(reconnu) || texteEcoute();
     return source ? texteEcoute() : '';
   });
   addEventListener('keydown', (e) => {
@@ -1461,7 +1599,27 @@ function installerVisiteur(api) {
       el('span', {}, T.sOrdinateur),
       el('span', { class: 'meta' }, T.sMeilleur),
     ),
-    el('p', { class: 'meta ou-radio', id: 'suggestion-ou', hidden: true }, T.ouRadio),
+    el(
+      'button',
+      {
+        class: 'ordi-suggestion mutant-suggestion',
+        type: 'button',
+        id: 'suggestion-mutant',
+        onclick: () => {
+          visibleJusqua = 0;
+          choisir('radio', { n: MUTANT.n });
+        },
+      },
+      el('span', {}, MUTANT.nom),
+      el('span', { class: 'meta' }, MUTANT.lieu),
+    ),
+    el(
+      'p',
+      { class: 'meta credit-mutant-suggestion', id: 'suggestion-credit-mutant' },
+      T.creditMutant,
+      el('a', { href: MUTANT.site, target: '_blank', rel: 'noopener' }, MUTANT.lienTexte),
+    ),
+    el('p', { class: 'meta ou-radio', id: 'suggestion-ou' }, T.ouRadio),
     el('div', { class: 'chaines', id: 'suggestion-chaines' }),
     creditRadio(),
     el('button', {
@@ -1488,8 +1646,11 @@ function installerVisiteur(api) {
   function remplirSuggestion() {
     const ordi = peutCapter && source !== 'system' && source !== 'loopback';
     $('suggestion-ordi').hidden = !ordi;
-    $('suggestion-ou').hidden = !ordi;
-    $('suggestion-titre').textContent = ordi ? T.suggestionCourte : T.suggestion;
+    const mutantJoue = source === 'radio' && estMutant(radioN);
+    $('suggestion-mutant').hidden = mutantJoue;
+    $('suggestion-credit-mutant').hidden = mutantJoue;
+    $('suggestion-ou').hidden = mutantJoue && !ordi;
+    $('suggestion-titre').textContent = T.suggestionCourte;
     const box = $('suggestion-chaines');
     const cle = String(radioN);
     if (box.dataset.cle === cle) return;
@@ -1612,6 +1773,8 @@ function installerVisiteur(api) {
     direct,
     source: () => source,
     ecoute: () => ecoute,
+    reconnu: () => reconnu,
+    declencheur: () => ({ choix: declencheur, joue: declencheurJoue }),
     radioSeule: () => radioSeule,
     nourri: () => nourri,
     erreur: () => erreur,

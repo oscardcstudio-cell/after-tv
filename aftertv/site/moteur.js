@@ -167,6 +167,7 @@ function capterSysteme({ onglet = false } = {}) {
     monitorTypeSurfaces: 'include',
   });
 }
+const DECLENCHEURS = ['auto', 'kick', 'snare', 'hihat'];
 const FICHIERS_PYODIDE = [
   'pyodide.asm.wasm',
   'python_stdlib.zip',
@@ -223,6 +224,7 @@ async function creerMoteur({ config = {}, params = new URLSearchParams() } = {})
     style: params.get('style') || (moodParam ? (moodParam === 'tout' ? 'auto' : moodParam) : 'house'),
     tags: [],
     coupesRapides: true,
+    declencheur: 'auto',
   };
   const abonnes = new Map();
   const derniers = new Map();
@@ -277,11 +279,7 @@ async function creerMoteur({ config = {}, params = new URLSearchParams() } = {})
     ]);
     py.runPython('import sys; sys.path.insert(0, "/home/pyodide")');
     ow = py.pyimport('oreille_web');
-    const moodDepart = MOODS.includes(reglages.style)
-      ? reglages.style
-      : reglages.style === 'auto'
-        ? 'tout'
-        : 'house';
+    const moodDepart = MOODS.includes(reglages.style) ? reglages.style : 'house';
     pilote = py.pyimport('pilote_web').depuis_json(manifesteTexte, moodDepart);
     pilote.demarre_seul();
     appliquer();
@@ -300,10 +298,9 @@ async function creerMoteur({ config = {}, params = new URLSearchParams() } = {})
     const s = reglages.style;
     if (s === 'auto') {
       pilote.set_familles(py.toPy([]));
-      pilote.set_mood('tout');
+      pilote.set_mood(dernierMorceau ? 'tout' : 'house');
       if (dernierMorceau)
         pilote.set_morceau_js(py.toPy(dernierMorceau.genres), py.toPy(dernierMorceau.styles));
-      else if (dernierGenre) pilote.set_genres_js(py.toPy(dernierGenre));
     } else if (MOODS.includes(s)) {
       pilote.set_familles(py.toPy([]));
       pilote.set_mood(s);
@@ -321,15 +318,18 @@ async function creerMoteur({ config = {}, params = new URLSearchParams() } = {})
     if (!pilote) return;
     appliquerStyle();
     if (!reglages.coupesRapides) pilote.set_coupes_rapides(false);
+    if (reglages.declencheur !== 'auto') pilote.set_declencheur(reglages.declencheur);
     emettreReplis();
   }
-  function regler({ style, tags, coupesRapides } = {}) {
+  function regler({ style, tags, coupesRapides, declencheur } = {}) {
     if (typeof style === 'string' && style) reglages.style = style;
+    if (DECLENCHEURS.includes(declencheur)) reglages.declencheur = declencheur;
     if (Array.isArray(tags)) reglages.tags = tags.filter((t) => typeof t === 'string' && t);
     if (typeof coupesRapides === 'boolean') reglages.coupesRapides = coupesRapides;
     if (!pilote) return;
     if (style !== void 0) appliquerStyle();
     if (coupesRapides !== void 0) pilote.set_coupes_rapides(reglages.coupesRapides);
+    if (DECLENCHEURS.includes(declencheur)) pilote.set_declencheur(reglages.declencheur);
     emettreReplis();
   }
   async function demarrer(source, options = {}) {
@@ -412,6 +412,11 @@ async function creerMoteur({ config = {}, params = new URLSearchParams() } = {})
           throw e;
         }
         verifier();
+        const video = flux.getVideoTracks()[0];
+        emettre('capture', {
+          label: video?.label || '',
+          surface: video?.getSettings?.().displaySurface || null,
+        });
         flux.getVideoTracks().forEach((t) => t.stop());
         const pistes = flux.getAudioTracks();
         if (!pistes.length) {
@@ -595,26 +600,15 @@ async function creerMoteur({ config = {}, params = new URLSearchParams() } = {})
       return;
     }
     dernierGenre = nets;
-    if (reglages.style === 'auto' && dernierMorceau) {
+    if (reglages.style === 'auto') {
       emettre('genre', {
         ...base,
         musique: true,
         applique: false,
-        morceau: true,
+        morceau: !!dernierMorceau,
         familles: null,
         mood: pilote.mood,
       });
-    } else if (reglages.style === 'auto') {
-      const r = JSON.parse(pilote.set_genres_js(py.toPy(nets)));
-      emettre('genre', {
-        ...base,
-        musique: true,
-        applique: true,
-        genres: r.genres,
-        familles: r.familles,
-        mood: r.mood,
-      });
-      emettreReplis();
     } else {
       const f = pilote.familles;
       const familles = f.toJs();
@@ -628,7 +622,9 @@ async function creerMoteur({ config = {}, params = new URLSearchParams() } = {})
     dernierMorceau = genres.length || styles.length ? { genres, styles } : null;
     if (!pilote || reglages.style !== 'auto') return null;
     if (!dernierMorceau) {
-      if (dernierGenre) pilote.set_genres_js(py.toPy(dernierGenre));
+      pilote.set_familles(py.toPy([]));
+      pilote.set_mood('house');
+      emettreReplis();
       return null;
     }
     const r = JSON.parse(pilote.set_morceau_js(py.toPy(genres), py.toPy(styles)));
@@ -815,6 +811,7 @@ async function creerMoteur({ config = {}, params = new URLSearchParams() } = {})
   };
 }
 export {
+  DECLENCHEURS,
   LAA,
   RADIOS,
   bpmDesTaps,

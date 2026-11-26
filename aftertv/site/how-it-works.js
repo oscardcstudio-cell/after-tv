@@ -512,6 +512,12 @@ const REGLES = [
       'The VHS switch at the end of the panel holds the effect for 30 seconds, then the automatic rule takes over again: at most once every 15 minutes, on a drop or a break the page is sure of.',
   },
   {
+    n: 'V102',
+    titre: 'House until the track is known',
+    regle:
+      'In Auto style, the film draws from the house loops until the track is recognised; then the styles of the track choose. The genre guessed from the sound is shown, but no longer steers.',
+  },
+  {
     n: 'V68',
     titre: 'One dominant loop per sequence',
     regle:
@@ -776,6 +782,20 @@ function candidats(
   });
   liste.sort((a, b) => b.part - a.part || b.affinite - a.affinite);
   return { pool, etapes, liste, pese: rien ? 'rien' : 'meilleures' };
+}
+function matriceTags(liste) {
+  const compte = new Map();
+  for (const x of liste || [])
+    for (const t of new Set(x.communs || [])) compte.set(t, (compte.get(t) || 0) + 1);
+  const n = (liste || []).length;
+  const tous = n >= 2 ? [...compte].filter(([, k]) => k === n).map(([t]) => t) : [];
+  const theme = (t) => (t.startsWith('thème:') ? 1 : 0);
+  const autres = [...compte]
+    .filter(([t]) => !tous.includes(t))
+    .map(([tag, k]) => ({ tag, n: k }))
+    .sort((a, b) => b.n - a.n || theme(b.tag) - theme(a.tag) || a.tag.localeCompare(b.tag));
+  tous.sort((a, b) => theme(b) - theme(a) || a.localeCompare(b));
+  return { tous, autres };
 }
 function plans(temps) {
   const out = [];
@@ -3181,7 +3201,7 @@ async function demarrer() {
           { class: 'bloc' },
           h('div', { class: 'entonnoir' }),
           titreBloc('Candidates and their chance', ''),
-          h('div', { class: 'cands' }),
+          h('div', { class: 'cands-zone' }),
           h(
             'div',
             { class: 'actions' },
@@ -3276,51 +3296,59 @@ async function demarrer() {
       if (x) liste = [...liste.slice(0, 5), x];
     }
     bloc(
-      el.querySelector('.cands'),
+      el.querySelector('.cands-zone'),
       liste.map((x) => `${x.loop.id}:${x.part.toFixed(3)}`).join() + (tire?.id ?? ''),
-      () =>
-        liste.length
-          ? liste.map((x) =>
-              h(
-                'div',
-                { class: `cand${tire?.id === x.loop.id ? ' tire' : ''}` },
-                img(x.loop, ''),
+      () => {
+        if (!liste.length)
+          return [
+            h('p', {
+              class: 'vide',
+              text:
+                c.pese === 'voisinage'
+                  ? `No free loop shares a tag with it: the draw takes a neighbor within ${M.VOISINAGE} columns, ${Math.round((1 - M.CHANCE_AILLEURS) * 5)} times in 5.`
+                  : 'No candidate.',
+            }),
+          ];
+        const { tous, autres } = matriceTags(liste);
+        const t = (x) => (tire?.id === x.loop.id ? ' t' : '');
+        const ligne2 = (cls, lab, plein) =>
+          h(
+            'div',
+            { class: `lien${cls}` },
+            h('span', { class: 'lab', text: lab }),
+            liste.map((x) => h('i', { class: `case${plein(x) ? ' plein' : ''}${t(x)}` })),
+          );
+        return [
+          tous.length
+            ? h(
+                'p',
+                { class: 'communs' },
+                h('span', { text: `All ${liste.length} share these with the loop that stays:` }),
+                tagsCourts(tous).map((x) => h('span', { class: 'puce', text: x })),
+              )
+            : null,
+          h(
+            'div',
+            { class: 'cands matrice', style: `--n:${liste.length}` },
+            h(
+              'div',
+              { class: 'lien entete' },
+              h('span', { class: 'lab', text: autres.length ? 'Shared by some' : '' }),
+              liste.map((x) =>
                 h(
-                  'div',
-                  null,
-                  h('div', { class: 'n', text: x.loop.nom }),
-                  h('div', {
-                    class: 'discret',
-                    text: [
-                      `column ${x.loop.colonne}`,
-                      x.voisin ? `${Math.abs(x.loop.colonne - reste.colonne)} away, a neighbor` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · '),
-                  }),
-                  h(
-                    'div',
-                    { class: 'puces' },
-                    tagsCourts(x.communs)
-                      .slice(0, 5)
-                      .map((t) => h('span', { class: 'puce', text: t })),
-                    x.communs.length > 5
-                      ? h('span', { class: 'discret', text: `+${x.communs.length - 5}` })
-                      : null,
-                  ),
+                  'figure',
+                  { class: `cand-tete${t(x)}`, title: `${x.loop.nom} · column ${x.loop.colonne}` },
+                  img(x.loop, ''),
+                  h('figcaption', { text: x.loop.nom }),
+                  h('b', { text: pc(x.part) }),
                 ),
-                h('div', { class: 'p' }, pc(x.part), h('small', { text: 'chance' })),
               ),
-            )
-          : [
-              h('p', {
-                class: 'vide',
-                text:
-                  c.pese === 'voisinage'
-                    ? `No free loop shares a tag with it: the draw takes a neighbor within ${M.VOISINAGE} columns, ${Math.round((1 - M.CHANCE_AILLEURS) * 5)} times in 5.`
-                    : 'No candidate.',
-              }),
-            ],
+            ),
+            ligne2(' voisin', `Neighbor, within ${M.VOISINAGE} columns`, (x) => x.voisin),
+            autres.map((a) => ligne2('', tagsCourts([a.tag])[0], (x) => (x.communs || []).includes(a.tag))),
+          ),
+        ];
+      },
     );
     texte(
       el.querySelector('.resultat'),
@@ -3352,15 +3380,10 @@ async function demarrer() {
           { class: 'bloc' },
           titreBloc('The last 12 bars, one column per beat', ''),
           h('div', { class: 'edl' }),
-        ),
-        h(
-          'div',
-          { class: 'bloc' },
-          titreBloc('Last change'),
-          h('p', { class: 'dernier-pas' }),
           h('p', { class: 'discret compte' }),
         ),
       );
+      ecrans9(el);
     }
     el.querySelectorAll('.declencheur .puce').forEach((s) =>
       s.classList.toggle('on', s.dataset.d === v.declencheur),
@@ -3392,8 +3415,8 @@ async function demarrer() {
           p.temps.map((c, i) => caseTemps(c, i, p.temps)),
         );
       const rangs = nums.flatMap((n) => [
-        h('span', { class: 'lab', text: `Layer ${n}` }),
         h('div', { class: 'piste-edl' }, plans(H.map((x) => x.couches[n] ?? null)).map(segment)),
+        h('div', { class: 'tete-couche' }, h('span', { class: 'lab', text: `Layer ${n}` }), ecranCouche(n)),
       ]);
       const regle = h(
         'div',
@@ -3406,20 +3429,66 @@ async function demarrer() {
           ),
         ),
       );
-      return [...rangs, h('span', { class: 'lab', text: 'Beats' }), regle];
+      return [...rangs, regle, h('span', { class: 'lab', text: 'Beats' })];
     });
-    const pas = S.dernierPas;
-    texte(
-      el.querySelector('.dernier-pas'),
-      pas
-        ? `${nomCol(pas.sort)} left${Number.isFinite(v.t) && Number.isFinite(pas.t) ? ` ${Math.round(v.t - pas.t)} s ago` : ''}. Now on screen: ${(pas.colonnes || []).map(nomCol).join(', ')}. One loop at a time (V42).`
-        : 'No loop has been swapped beside the one that stays yet. Until then, the changes come from the dominant loop and the modes.',
-    );
+    const dernier = H[H.length - 1]?.couches ?? {};
+    for (const [n, toile] of E9) {
+      const nom = dernier[n]?.col != null ? dernier[n].nom : '';
+      toile.setAttribute('aria-label', nom ? `Layer ${n}, playing ${nom}` : `Layer ${n}, no loop`);
+    }
     texte(
       el.querySelector('.compte'),
-      'A white bar inside a block is a jump to another cue point of the same loop. A white mark under a beat is a kick.',
+      'A white bar inside a block is a jump to another cue point of the same loop. A white mark under a beat is a kick. Each small screen plays what its layer shows right now, and goes dark when the layer is hidden on that beat.',
     );
   };
+  const E9 = new Map();
+  function ecranCouche(n) {
+    if (!E9.has(n))
+      E9.set(
+        n,
+        h('canvas', {
+          class: 'ecran-direct vide',
+          width: 192,
+          height: 108,
+          role: 'img',
+          'aria-label': `Layer ${n}`,
+        }),
+      );
+    return E9.get(n);
+  }
+  function ecrans9(el) {
+    let visible = false;
+    new IntersectionObserver((es) => {
+      visible = es.some((x) => x.isIntersecting);
+    }).observe(el);
+    const image = () => {
+      requestAnimationFrame(image);
+      if (document.hidden || !visible) return;
+      const couches = filmApi()?.couches;
+      for (const [n, toile] of E9) {
+        if (!toile.isConnected) continue;
+        const c = couches?.get?.(n);
+        const video = c?.videos?.find((x) => x.classList.contains('visible'));
+        let ok = false;
+        try {
+          ok =
+            !!video &&
+            composerCouches(
+              toile.getContext('2d'),
+              [{ opacite: 1, fusion: 'normal', filtre: c.div.style.filter, videos: [video] }],
+              toile.width,
+              toile.height,
+            );
+        } catch {
+          ok = false;
+        }
+        if (!ok) toile.getContext('2d').clearRect(0, 0, toile.width, toile.height);
+        toile.classList.toggle('vide', !ok);
+        toile.classList.toggle('cachee', ok && parseFloat(c.div.style.opacity || '1') <= 0.05);
+      }
+    };
+    requestAnimationFrame(image);
+  }
   VUES[10] = () => {
     const el = $('#v10');
     if (!el.__fait) {
@@ -4037,6 +4106,7 @@ export {
   horloge,
   journalCourt,
   jusqua,
+  matriceTags,
   motEn,
   nomMode,
   nomMotif,

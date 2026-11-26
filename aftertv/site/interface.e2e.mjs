@@ -130,7 +130,7 @@ export async function creerMoteur({ params }) {
       minuteur = setInterval(() => {
         f.temps++;
         emettre('tempo', { bpm: 128, locked: true });
-        emettre('temps', { e: { t: Date.now() / 1000, bpm: 128, mood: 'house',
+        emettre('temps', { e: { t: Date.now() / 1000, bpm: 128, mood: 'house', outils: { declencheur: window.__declencheurFaux || 'kick' },
           couches: { '1': { col: 2, nom: 'Beta', opacite: 1, blend: null, depart: 0, t: Date.now() / 1000 } } }, pos: i++ % 4,
           r: window.__ecouteFaux ? { ecoute: window.__ecouteFaux } : undefined });
       }, 250);
@@ -1068,6 +1068,47 @@ try {
       ),
       'Tap : la puce du mode recopie celle du bandeau',
     );
+    const coupes = () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll('[data-declencheur]')]
+          .map(
+            (b) =>
+              b.dataset.declencheur +
+              (b.getAttribute('aria-checked') === 'true' ? '*' : '') +
+              (b.dataset.joue ? '.' : ''),
+          )
+          .join(),
+      );
+    verifie(
+      (await coupes()) === 'auto*,kick.,snare,hihat',
+      `Cuts on : Auto coché, le point sur Kick (${await coupes()})`,
+    );
+    await page.evaluate(() => {
+      window.__declencheurFaux = 'snare';
+    });
+    await page.waitForFunction(
+      () => document.querySelector("[data-declencheur='snare']")?.dataset.joue,
+      null,
+      { timeout: 3e3 },
+    );
+    verifie(
+      (await coupes()) === 'auto*,kick,snare.,hihat',
+      'Cuts on : en Auto, le point passe sur Snare quand le pilote y passe',
+    );
+    await page.click("[data-declencheur='hihat']");
+    verifie(
+      (await page.evaluate(() => window.__faux.regles.at(-1).declencheur)) === 'hihat' &&
+        (await coupes()).startsWith('auto,kick,snare.,hihat*'),
+      `Cuts on : Hi-hat fixé dans le moteur (${await coupes()})`,
+    );
+    await page.click("[data-declencheur='auto']");
+    verifie(
+      (await page.evaluate(() => window.__faux.regles.at(-1).declencheur)) === 'auto',
+      "Cuts on : Auto rend la main à l'autopilot",
+    );
+    await page.evaluate(() => {
+      window.__declencheurFaux = null;
+    });
     await page.evaluate(() =>
       document.querySelector("[data-section='tap']").scrollIntoView({ block: 'center' }),
     );
@@ -1088,7 +1129,9 @@ try {
       { timeout: 5e3 },
     );
     const radioStyle = await page.evaluate(() => ({
-      lampes: [...document.querySelectorAll('#style-lampes .lampe')].map((l) => l.dataset.etat || '-').join(),
+      lampes: [...document.querySelectorAll('#style-lampes .lampe:not([hidden])')]
+        .map((l) => l.dataset.etat || '-')
+        .join(),
       titre: document.getElementById('style-titre').textContent,
       infos: document.getElementById('style-infos').textContent,
     }));
@@ -2155,7 +2198,9 @@ try {
         ),
       );
       const lampes = await page.evaluate(() =>
-        [...document.querySelectorAll('#style-lampes .lampe')].map((l) => l.dataset.etat || '-').join(),
+        [...document.querySelectorAll('#style-lampes .lampe:not([hidden])')]
+          .map((l) => l.dataset.etat || '-')
+          .join(),
       );
       verifie(lampes === 'trouve,-,trouve', `Style : Shazam et Discogs allumés, AudD éteint (${lampes})`);
       const infos = await page.textContent('#style-infos');

@@ -360,6 +360,14 @@ class Pilote:
             for ordre in self.outils.regler(outil, self.coupes_rapides):
                 self._jouer_ordre(ordre)
 
+    def set_declencheur(self, choix: str) -> None:
+        self.outils.regler('declencheur', False)
+        if choix in sequencer.PULSE_CADENCES:
+            self.live.set_trigger(choix)
+        else:
+            self.outils.regler('declencheur', True)
+        self.apply_live()
+
     def _refaire_viviers(self) -> None:
         *pools, self.replis = viviers(self.loops, self.tags, self.mood, self.familles, tags_voulus=self.tags_voulus)
         self.live.set_pools(*pools)

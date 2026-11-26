@@ -9,6 +9,7 @@ import {
   journalCourt,
   reglesActives,
   candidats,
+  matriceTags,
   plans,
   jusqua,
   borne,
@@ -379,4 +380,20 @@ test('étape 11, V72 et V74 : le break tient sa loop, le noir vient après 4 s d
   assert.equal(simSilence(15 * 4).noir, false);
   assert.equal(simSilence(16 * 4).noir, true);
   assert.equal(simSilence(24 * 4).noir, false, 'le film revient avec le son');
+});
+test('matriceTags : ce que toutes partagent se dit une fois, le reste trié par nombre', () => {
+  const liste = [
+    { communs: ['couleur:nb', 'espace:profond', 'thème:mer'] },
+    { communs: ['couleur:nb', 'espace:profond', 'cadre:détail'] },
+    { communs: ['couleur:nb', 'thème:mer'] },
+  ];
+  const { tous, autres } = matriceTags(liste);
+  assert.deepEqual(tous, ['couleur:nb']);
+  assert.deepEqual(autres, [
+    { tag: 'thème:mer', n: 2 },
+    { tag: 'espace:profond', n: 2 },
+    { tag: 'cadre:détail', n: 1 },
+  ]);
+  assert.deepEqual(matriceTags([{ communs: ['a', 'b'] }]).tous, []);
+  assert.deepEqual(matriceTags([]), { tous: [], autres: [] });
 });

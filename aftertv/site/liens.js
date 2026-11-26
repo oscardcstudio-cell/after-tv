@@ -22,6 +22,10 @@ const idYoutube = (s) => (/^[\w-]{11}$/.test(s || '') ? s : null);
 function lecteurDuLien(texte) {
   const u = premierLien(texte);
   if (!u) return null;
+  const l = lecteurDe(u);
+  return l && { ...l, adresse: u.href };
+}
+function lecteurDe(u) {
   const hote = u.hostname.replace(/^(www|m)\./, '');
   const chemin = u.pathname.split('/').filter(Boolean);
   if (

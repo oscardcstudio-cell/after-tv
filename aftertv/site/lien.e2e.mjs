@@ -59,7 +59,7 @@ export async function lireConfig() { return fetch('config.json').then((r) => r.j
 export async function creerMoteur() {
   const abonnes = new Map(), derniers = new Map();
   const emettre = (n, v) => { derniers.set(n, v); for (const f of abonnes.get(n) || []) f(v); };
-  const f = window.__faux = { demarres: [], partages: [] };
+  const f = window.__faux = { demarres: [], partages: [], morceaux: [] };
   let ecoute = false, jeton = 0;
   const echec = (e) => { emettre('etat', { phase: 'stopped' }); emettre('etat', { phase: 'error', message: e.message, code: e.code }); throw e; };
   return {
@@ -81,7 +81,7 @@ export async function creerMoteur() {
       emettre('etat', { phase: 'listening', source });
     },
     arreter() { jeton++; ecoute = false; emettre('etat', { phase: 'stopped' }); },
-    tap() { return null; }, premierTemps() {}, octave() {}, regler() {}, morceau() {},
+    tap() { return null; }, premierTemps() {}, octave() {}, regler() {}, morceau(m) { f.morceaux.push(m ? { artiste: m.artiste, titre: m.titre, styles: m.styles } : null); },
     on(n, fn) { if (!abonnes.has(n)) abonnes.set(n, new Set()); abonnes.get(n).add(fn); if (derniers.has(n)) fn(derniers.get(n)); return () => abonnes.get(n).delete(fn); },
     tagsDisponibles: () => [],
   };
@@ -96,6 +96,7 @@ const PARTAGE = () => {
     return new MediaStream([...c.captureStream(1).getVideoTracks(), ...son.stream.getAudioTracks()]);
   };
 };
+const titresDemandes = [];
 const serveur = createServer(async (req, res) => {
   const chemin =
     posix.normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^\/+/, '') ||
@@ -107,6 +108,27 @@ const serveur = createServer(async (req, res) => {
   if (chemin === 'moteur.js') return envoie(TYPES['.js'], FAUX_MOTEUR);
   if (chemin === 'config.json')
     return envoie(TYPES['.json'], JSON.stringify({ manifest: 'data/manifest.json' }));
+  if (chemin === 'after-tv/titre-lien') {
+    const lien = new URL(req.url, 'http://x').searchParams.get('url') || '';
+    titresDemandes.push(lien);
+    const reponses = {
+      youtube: {
+        trouve: true,
+        service: 'youtube',
+        titre: 'Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)',
+        auteur: 'Rick Astley',
+      },
+      soundcloud: { trouve: true, service: 'soundcloud', titre: 'Flickermood by Forss', auteur: 'Forss' },
+    };
+    return envoie(
+      TYPES['.json'],
+      JSON.stringify(
+        reponses[/soundcloud/.test(lien) ? 'soundcloud' : /youtu/.test(lien) ? 'youtube' : 'aucun'] || {
+          trouve: false,
+        },
+      ),
+    );
+  }
   if (chemin.startsWith('..')) {
     res.writeHead(404);
     return res.end();
@@ -159,6 +181,13 @@ async function nouvellePage(viewport = { width: 1280, height: 720 }) {
     r.fulfill({ status: 200, contentType: 'text/html', body: '<body></body>' }),
   );
   await ctx.route(/^https:\/\/(widget\.mixcloud\.com|open\.spotify\.com)\//, (r) => r.abort());
+  await ctx.route(/^https:\/\/api\.discogs\.com\//, (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ results: [{ style: ['Synth-pop'], genre: ['Electronic', 'Pop'] }] }),
+    }),
+  );
   const page = await ctx.newPage();
   page.on('pageerror', (e) => erreurs.push(String(e)));
   await page.goto(PAGE);
@@ -210,6 +239,20 @@ try {
     verifie(
       !(await page.textContent('body')).includes('dQw4w9WgXcQ'),
       "le lien collé n'est écrit nulle part",
+    );
+    await page.waitForFunction(() => window.__visiteur.reconnu()?.titre);
+    const r = await page.evaluate(() => window.__visiteur.reconnu());
+    verifie(
+      r.artiste === 'Rick Astley' && r.titre === 'Never Gonna Give You Up' && r.source === 'lien',
+      `titre : lu dans le lien (${JSON.stringify(r)})`,
+    );
+    await page.waitForFunction(() =>
+      window.__faux.morceaux.some((m) => m?.titre === 'Never Gonna Give You Up' && m.styles?.length),
+    );
+    resultats.push('titre : passé au cerveau (moteur.morceau), puis avec ses styles Discogs');
+    verifie(
+      (await page.textContent('#avis')).includes('Pause or mute the other tab'),
+      "avis : couper le son de l'autre onglet",
     );
     await page.waitForTimeout(1500);
     await page.mouse.move(400, 300);
@@ -265,12 +308,52 @@ try {
       'Ctrl+V : le lecteur SoundCloud',
     );
     verifie((await page.locator('#lecteur-lien').count()) === 1, 'Ctrl+V : un seul lecteur');
+    const apres = await etat(page);
+    verifie(
+      apres.faux.partages.length === 1 &&
+        apres.faux.demarres.join() === 'tab' &&
+        apres.source === 'tab' &&
+        apres.ecoute,
+      `Ctrl+V : pas de nouveau partage (${JSON.stringify(apres.faux)})`,
+    );
+    await page.waitForFunction(() => window.__visiteur.reconnu()?.titre === 'Flickermood');
+    resultats.push('Ctrl+V : le titre du nouveau lien (Forss - Flickermood)');
     await page.$eval("#panneau [data-source='off']", (b) => b.click());
     await page.waitForTimeout(200);
     verifie(
       !(await page.$('#lecteur-lien')) && (await etat(page)).source === null,
       'Off : le lecteur fermé, plus de source',
     );
+    await ctx.close();
+  }
+  {
+    const { ctx, page } = await nouvellePage();
+    await page.click('#entree-principal');
+    await page.waitForFunction(() => window.__visiteur.ecoute() && window.__visiteur.source() === 'system');
+    await presse(page, 'https://youtu.be/dQw4w9WgXcQ?si=abc');
+    await page.evaluate(() => {
+      const dt = new DataTransfer();
+      dt.setData('text/plain', 'https://youtu.be/dQw4w9WgXcQ?si=abc');
+      document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+    });
+    await page.waitForFunction(() => window.__visiteur.reconnu()?.titre === 'Never Gonna Give You Up');
+    const e = await etat(page);
+    verifie(
+      e.faux.partages.length === 1 &&
+        e.faux.demarres.join() === 'system' &&
+        e.source === 'system' &&
+        e.ecoute,
+      `son de l'ordinateur : le lien ne redemande pas de partage (${JSON.stringify(e.faux)})`,
+    );
+    verifie(
+      e.cadre?.startsWith('https://www.youtube.com/embed/dQw4w9WgXcQ'),
+      "son de l'ordinateur : le lecteur YouTube s'ouvre",
+    );
+    verifie(
+      (await page.textContent('#avis')).includes('Pause or mute the other tab'),
+      "son de l'ordinateur : l'avis du son doublé",
+    );
+    await capture(page, 'systeme-lien');
     await ctx.close();
   }
   {
