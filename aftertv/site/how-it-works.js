@@ -1885,9 +1885,14 @@ async function demarrer() {
       ),
     );
     schema.__biblio = loops.length ? grilleBiblio(bib) : null;
-    schema
-      .querySelectorAll('.schema-ligne .flux')
-      .forEach((f) => f.append(h('span', { class: 'voyage' }, h('b', { class: 'paquet' }))));
+    const points = (n, cls = 'points') =>
+      h(
+        'span',
+        { class: cls },
+        Array.from({ length: n }, () => h('i')),
+      );
+    schema.querySelectorAll('.schema-ligne .flux').forEach((f) => f.replaceChildren(points(5)));
+    schema.querySelectorAll('.schema-sources .annexe').forEach((a) => a.append(points(4, 'points montants')));
   }
   if (schema && !schema.__direct) {
     schema.__direct = true;
@@ -1908,7 +1913,6 @@ async function demarrer() {
     };
     requestAnimationFrame(image);
   }
-  const etroit = matchMedia('(max-width: 900px)');
   const OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
   function defile(boite, t) {
     if (!boite || boite.__t === t) return;
@@ -2171,33 +2175,23 @@ async function demarrer() {
       val(bi, 'biblio', `${viv.size} of ${loops.length} can play now`);
     }
     if (nouveauTemps && v.temps) {
-      const coupe = VOIES.some(
-        ([k, , champ]) =>
-          k === decl &&
-          pasDe(f[champ])
-            .slice((v.temps - 1) * 4, v.temps * 4)
-            .some(Boolean),
-      );
-      const mots = [
-        'sound',
-        v.kick ? 'kick' : `beat ${v.temps}`,
-        S.e ? nomMode(v.mode) : 'bar',
-        coupe ? 'cut' : 'loops',
-      ];
-      const axe = etroit.matches ? 'Y' : 'X';
+      const pas = T * 0.07,
+        allume = (rond, delai) =>
+          anime(
+            rond,
+            [
+              { opacity: 0.18, transform: 'scale(1)' },
+              { opacity: 1, transform: 'scale(1.35)', offset: 0.25 },
+              { opacity: 0.18, transform: 'scale(1)' },
+            ],
+            { duration: T * 0.5, delay: delai, easing: 'cubic-bezier(.2,0,.2,1)' },
+          );
       schema.querySelectorAll('.schema-ligne .flux').forEach((fl, i) => {
-        const rail2 = fl.querySelector('.voyage');
-        texte(rail2.firstChild, mots[i] ?? '');
-        anime(
-          rail2,
-          [
-            { transform: `translate${axe}(0%)`, opacity: 0 },
-            { opacity: 1, offset: 0.2 },
-            { opacity: 1, offset: 0.8 },
-            { transform: `translate${axe}(100%)`, opacity: 0 },
-          ],
-          { duration: T * 0.55, delay: T * 0.16 * i, easing: 'cubic-bezier(.45,0,.55,1)', fill: 'both' },
-        );
+        fl.querySelectorAll('.points i').forEach((rond, j) => allume(rond, T * 0.16 * i + pas * j));
+      });
+      schema.querySelectorAll('.points.montants').forEach((col) => {
+        const ronds = [...col.querySelectorAll('i')].reverse();
+        ronds.forEach((rond, j) => allume(rond, T * 0.3 + pas * j));
       });
     }
   };
