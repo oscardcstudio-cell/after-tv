@@ -2666,6 +2666,68 @@ try {
     await capture(page, 'R-moteur-absent-1440');
     await ctx.close();
   }
+  if (videos) {
+    const manifeste480 = JSON.stringify({
+      version: 1,
+      loops: LOOPS.map(({ src, ...l }) => ({ ...l, video: `loops/${l.id}.webm`, vignette: `${l.id}.jpg` })),
+    });
+    const page480 = async (lente) => {
+      const { ctx, page } = await nouvellePage({ width: 1280, height: 720 });
+      await ctx.route('**/data/manifest.json', (r) =>
+        r.fulfill({ contentType: 'application/json', body: manifeste480 }),
+      );
+      await ctx.route('**/data/loops_480/index.json', (r) =>
+        r.fulfill({ contentType: 'application/json', body: JSON.stringify({ loops: ['a', 'b', 'c'] }) }),
+      );
+      await ctx.route(/\/data\/loops(_480)?\/[abc]\.webm/, async (route) => {
+        const m = route
+          .request()
+          .url()
+          .match(/loops(_480)?\/([abc])\.webm/);
+        if (lente && route.request().resourceType() === 'fetch')
+          await new Promise((ok) => setTimeout(ok, 14e3));
+        try {
+          await route.fulfill({
+            status: 200,
+            contentType: 'video/webm',
+            body: await readFile(join(DONNEES, `${m[2]}.webm`)),
+          });
+        } catch {}
+      });
+      await page.goto(PAGE);
+      return { ctx, page };
+    };
+    const sources = (page) =>
+      page.evaluate(() => [...document.querySelectorAll('#miroir video')].map((v) => v.src).filter(Boolean));
+    {
+      const { ctx, page } = await page480(false);
+      await page.waitForFunction(
+        () => [...document.querySelectorAll('#miroir video')].some((v) => v.src.includes('/loops/')),
+        null,
+        { timeout: 15e3 },
+      );
+      await page.waitForTimeout(3e3);
+      const s = await sources(page);
+      verifie(
+        s.length && s.every((x) => !x.includes('/loops_480/')),
+        `connexion rapide : la 720p, jamais la 480p (${s.map((x) => x.split('/data/')[1]).join(', ')})`,
+      );
+      await ctx.close();
+    }
+    {
+      const { ctx, page } = await page480(true);
+      await page.waitForFunction(
+        () => [...document.querySelectorAll('#miroir video')].some((v) => v.src.includes('/loops_480/')),
+        null,
+        { timeout: 4e4 },
+      );
+      verifie(
+        true,
+        "connexion lente (la mesure n'aboutit pas en 12 s) : les loops suivantes passent en 480p",
+      );
+      await ctx.close();
+    }
+  }
   {
     const { ctx, page } = await nouvellePage({ width: 1440, height: 900 });
     await ctx.route('**/data/manifest.json', (route) => route.fulfill({ status: 404, body: '' }));

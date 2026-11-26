@@ -1492,6 +1492,7 @@
             if (lirePixels) v.crossOrigin = 'anonymous';
             v.setAttribute('muted', '');
             v.setAttribute('playsinline', '');
+            v.addEventListener('waiting', () => sondeVite());
             div.appendChild(v);
             return v;
           });
@@ -1585,6 +1586,8 @@
           if (src === url(demande.loop.video_hd || '')) {
             demande.loop.hdAbsent = true;
             lecture.hd_absents++;
+          } else if (src === url(video480(demande.loop) || '')) {
+            demande.loop.basAbsent = true;
           } else {
             lecture.abandons++;
             c.rate = cle(demande);
@@ -1952,42 +1955,73 @@
       }, 100);
       const HD_MONTE = 12,
         HD_DESCEND = 9,
-        SONDE_OCTETS = 2e6,
-        SONDE_S = 45;
+        BAS_DESCEND = 4,
+        BAS_MONTE = 6;
+      const SONDE_OCTETS = 2e6,
+        SONDE_OCTETS_BAS = 5e5,
+        SONDE_S = 45,
+        SONDE_DELAI_MS = 12e3;
       let tousLesLoops = [];
       const qualite = {
         forcee: q.has('hd'),
         sd: !q.has('hd') && !!visiteur?.sd,
         debit: null,
         hd: false,
+        bas: false,
+        avec480: new Set(),
         mesuree: null,
         erreur: null,
       };
+      const video480 = (loop) =>
+        loop.video && qualite.avec480.has(loop.id) ? loop.video.replace(/^loops\//, 'loops_480/') : null;
       function fichier(loop) {
+        if (qualite.bas && !qualite.forcee && !loop.basAbsent && video480(loop)) return video480(loop);
         if (qualite.sd && !qualite.forcee) return loop.video;
         return loop.video_hd && !loop.hdAbsent && (qualite.forcee || qualite.hd) ? loop.video_hd : loop.video;
       }
+      function paliers(debit, avant) {
+        if (debit == null) return { hd: false, bas: true };
+        return {
+          hd: avant.hd ? debit >= HD_DESCEND : debit >= HD_MONTE,
+          bas: avant.bas ? debit < BAS_MONTE : debit < BAS_DESCEND,
+        };
+      }
+      let sondeEnCours = false,
+        derniereSonde = 0;
       async function sondeDebit() {
         const avecHd = tousLesLoops.filter((l2) => l2.video_hd);
-        if (!avecHd.length) return;
-        const l = avecHd[Math.floor(Math.random() * avecHd.length)];
+        const tous = avecHd.length ? avecHd : tousLesLoops.filter((l2) => l2.video);
+        if (!tous.length || sondeEnCours) return;
+        sondeEnCours = true;
+        derniereSonde = Date.now();
+        const l = tous[Math.floor(Math.random() * tous.length)];
+        const octets = qualite.bas ? SONDE_OCTETS_BAS : SONDE_OCTETS;
+        const arret = new AbortController();
+        const minuteur = setTimeout(() => arret.abort(), SONDE_DELAI_MS);
         try {
           const debut = performance.now();
-          const r = await fetch(url(l.video_hd), {
-            headers: { Range: `bytes=0-${SONDE_OCTETS - 1}` },
+          const r = await fetch(url(l.video_hd || l.video), {
+            headers: { Range: `bytes=0-${octets - 1}` },
             cache: 'no-store',
+            signal: arret.signal,
           });
           const lu = (await r.arrayBuffer()).byteLength;
           const s = (performance.now() - debut) / 1e3;
           qualite.debit = Math.round((lu * 8) / s / 1e5) / 10;
-          qualite.hd = qualite.hd ? qualite.debit >= HD_DESCEND : qualite.debit >= HD_MONTE;
+          Object.assign(qualite, paliers(qualite.debit, qualite));
           qualite.mesuree = Date.now();
           qualite.erreur = null;
         } catch (e) {
           qualite.erreur = String(e);
-          qualite.hd = false;
+          Object.assign(qualite, paliers(null, qualite));
+        } finally {
+          clearTimeout(minuteur);
+          sondeEnCours = false;
         }
       }
+      const sondeVite = () => {
+        if (tousLesLoops.length && Date.now() - derniereSonde > 1e4) sondeDebit();
+      };
       function appliqueHd() {
         document.getElementById('btn-hd').setAttribute('aria-pressed', String(qualite.forcee));
         const hd = tousLesLoops.filter((l) => l.video_hd);
@@ -2003,6 +2037,12 @@
         idx = index(loops);
         montage = new MontageSeul(loops, { mood, bpm });
         appliqueHd();
+        fetch(url('loops_480/index.json'), { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => {
+            if (Array.isArray(j?.loops)) qualite.avec480 = new Set(j.loops);
+          })
+          .catch(() => {});
         sondeDebit();
         setInterval(sondeDebit, SONDE_S * 1e3);
         changeMood(mood);
@@ -2992,7 +3032,7 @@
         const mode = e.mode || (e.in_break ? 'break' : 'drop');
         const couleurMode = NOMS_MODES[mode] ? `var(--${mode})` : 'var(--texte)';
         const source =
-          `<section><h3>Source</h3><div class="ligne"><span class="source ${enDir ? 'direct' : 'veille'}">${enDir ? '&#9679; DASHBOARD EN DIRECT' : '&#9675; VEILLE'}</span><span class="discret">${ageS == null ? 'aucun état reçu du dashboard' : 'dernier état il y a ' + ageS.toFixed(1) + ' s'}</span></div><div class="meta">vidéos : ${lecture.bascules} entrées, prêtes en ${lecture.bascules ? Math.round(lecture.attente_ms / lecture.bascules) : 0} ms en moyenne · ${lecture.en_attente} en chargement · ${lecture.relances} relances · ${lecture.abandons} abandonnées · ${lecture.noirs_evites} écrans noirs évités · ${lecture.hd_absents} HD absents (lus en SD)</div><div class="meta">qualité : <b>${qualite.forcee ? 'HD (bouton)' : qualite.hd ? 'HD (auto)' : 'SD'}</b> · débit ${qualite.debit == null ? (qualite.erreur ? 'non mesurable' : 'en mesure') : qualite.debit + ' Mbit/s'} · HD au-dessus de ${HD_MONTE} · ${tousLesLoops.filter((l) => l.video_hd).length} loops en HD${enDir && e.outils ? (e.outils.hd_seulement ? ' · le dashboard ne tire que des loops HD' : qualite.forcee ? " · le dashboard tire aussi des loops sans HD (bouton HD de sa page pour l'en empêcher)" : '') : ''}</div>` +
+          `<section><h3>Source</h3><div class="ligne"><span class="source ${enDir ? 'direct' : 'veille'}">${enDir ? '&#9679; DASHBOARD EN DIRECT' : '&#9675; VEILLE'}</span><span class="discret">${ageS == null ? 'aucun état reçu du dashboard' : 'dernier état il y a ' + ageS.toFixed(1) + ' s'}</span></div><div class="meta">vidéos : ${lecture.bascules} entrées, prêtes en ${lecture.bascules ? Math.round(lecture.attente_ms / lecture.bascules) : 0} ms en moyenne · ${lecture.en_attente} en chargement · ${lecture.relances} relances · ${lecture.abandons} abandonnées · ${lecture.noirs_evites} écrans noirs évités · ${lecture.hd_absents} HD absents (lus en SD)</div><div class="meta">qualité : <b>${qualite.forcee ? 'HD (bouton)' : qualite.bas && qualite.avec480.size ? '480p (connexion lente)' : qualite.hd ? 'HD (auto)' : 'SD'}</b> · débit ${qualite.debit == null ? (qualite.erreur ? 'non mesurable' : 'en mesure') : qualite.debit + ' Mbit/s'} · HD au-dessus de ${HD_MONTE}, 480p sous ${BAS_DESCEND} (${qualite.avec480.size} loops en 480p) · ${tousLesLoops.filter((l) => l.video_hd).length} loops en HD${enDir && e.outils ? (e.outils.hd_seulement ? ' · le dashboard ne tire que des loops HD' : qualite.forcee ? " · le dashboard tire aussi des loops sans HD (bouton HD de sa page pour l'en empêcher)" : '') : ''}</div>` +
           (enDir
             ? ''
             : `<div class="discret">Dashboard éteint : la page alterne deux loops liées. Catalogue ${montage ? montage.loops.length : 0} loops, vivier du mood ${montage ? montage.pool.length : 0}.</div>`) +
