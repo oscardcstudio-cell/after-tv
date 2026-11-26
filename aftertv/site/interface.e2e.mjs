@@ -588,6 +588,25 @@ try {
       )) === 'vhs,doc',
       'fin du volet : VHS puis How it works',
     );
+    verifie(
+      await page.evaluate(() =>
+        document.querySelector("[data-section='doc'] a[data-lien='doc']").classList.contains('primaire'),
+      ),
+      'How it works : un bouton blanc',
+    );
+    verifie(
+      await page.evaluate(() => {
+        const p = document.querySelector('#panneau > .pied-panneau');
+        return (
+          p &&
+          p === document.getElementById('panneau').lastElementChild &&
+          !!p.querySelector('#github-lien') &&
+          !!p.querySelector('#retour-bouton') &&
+          !document.querySelector('.tete-panneau #retour-bouton')
+        );
+      }),
+      'GitHub et Feedback tout en bas du volet',
+    );
     await page.click("[data-section='tv'] summary");
     await page.click("[data-section='apropos'] summary");
     await capture(page, 'panneau-1920');

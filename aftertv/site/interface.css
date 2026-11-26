@@ -2029,11 +2029,38 @@ html.lecture #suggestion-radio p {
     padding-bottom: calc(var(--s4) + env(safe-area-inset-bottom));
   }
 }
+#panneau .bouton-doc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  font: 500 var(--t-meta) / 1 var(--font);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition:
+    transform var(--d-press) var(--ease-out),
+    background-color 160ms ease;
+}
+#panneau .bouton-doc:active {
+  transform: scale(0.97);
+}
+#panneau .pied-panneau {
+  display: grid;
+  gap: var(--s3);
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--rule);
+}
+#panneau .pied-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
 #panneau .retour-bouton {
-  margin-left: auto;
-  margin-right: var(--s2);
   min-height: 36px;
-  font-size: var(--t-meta);
+  font: 500 var(--t-meta) / 1 var(--font);
+  border-radius: var(--radius);
   letter-spacing: var(--track-button);
   text-transform: uppercase;
 }
@@ -2042,10 +2069,7 @@ html.lecture #suggestion-radio p {
   align-items: center;
   gap: 6px;
   text-decoration: none;
-  color: inherit;
-}
-#panneau .github-lien + .retour-bouton {
-  margin-left: 0;
+  color: var(--ink);
 }
 #panneau .retour-bouton[aria-expanded='true'] {
   background: var(--ink);
@@ -2055,8 +2079,6 @@ html.lecture #suggestion-radio p {
 #panneau .retour-boite {
   display: grid;
   gap: var(--s2);
-  padding: var(--s3) 0 var(--s4);
-  border-bottom: 1px solid var(--rule);
 }
 #panneau .retour-boite[hidden] {
   display: none;
