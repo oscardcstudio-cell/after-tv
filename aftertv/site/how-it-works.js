@@ -518,6 +518,12 @@ const REGLES = [
       'In Auto style, the film draws from the house loops until the track is recognised; then the styles of the track choose. The genre guessed from the sound is shown, but no longer steers.',
   },
   {
+    n: 'V105',
+    titre: 'The next loop, most of the time',
+    regle:
+      'When the edit changes a loop, six times in ten it takes the next free loop in the order of the library, within 5 columns, like a sequence in Resolume; otherwise a neighbour within 5 columns, a pair or the same composition. Never a loop already played while others remain.',
+  },
+  {
     n: 'V68',
     titre: 'One dominant loop per sequence',
     regle:

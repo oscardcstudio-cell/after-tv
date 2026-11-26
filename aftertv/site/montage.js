@@ -1,6 +1,6 @@
 const MOODS = ['house', 'techno'];
 const MOOD_PARTOUT = 'les deux';
-const VOISINAGE = 10;
+const VOISINAGE = 5;
 const CHANCE_AILLEURS = 0.2;
 const SEJOUR_S = 4;
 const SEJOUR_MESURES = 2;

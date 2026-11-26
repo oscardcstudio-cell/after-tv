@@ -17,7 +17,8 @@ HOLD_CHANCE = 0.25
 SUPERPOSITION_BARS = (4, 8, 16)
 SUPERPOSITION_REPOS_BARS = 8
 CHANCE_SUPERPOSITION = 0.3
-VOISINAGE = 10
+VOISINAGE = 5
+CHANCE_SUIVANTE = 0.6
 CHANCE_AILLEURS = 0.2
 ECART_VUES = 1
 THEME_MIN_LOOPS = 8
@@ -1235,9 +1236,24 @@ class LiveMode:
                     egales = [c for c in egales if notes[c] == haut]
             pick = random.choice(self._favorites_d_abord(egales))
             self._vues[pick] = self._vues.get(pick, 0) + 1
+            self._derniere_tiree = pick
             vus.append(pick)
             self._note_lien(pick, restent, remplace, regle)
             return pick
+        depart = getattr(self, '_derniere_tiree', None)
+        if depart is None:
+            depart = pres_de
+        if self.solo_kind is None and depart is not None and (random.random() < CHANCE_SUIVANTE):
+            fenetre = [c for c in _fraiches(free, mini) if depart < c <= depart + VOISINAGE]
+            if fenetre:
+                base = self._favorites_d_abord(self._moins_montrees(_fraiches(free, mini)))
+                moins_vues = min((self._vues.get(c, 0) for c in base))
+                apres = [c for c in fenetre if c in base and self._vues.get(c, 0) == moins_vues]
+                if apres and regle == 'tags':
+                    liees = set((c for c in apres if self._mieux_liees([c], restent, remplace)))
+                    apres = [c for c in apres if c in liees]
+                if apres:
+                    return _prendre([min(apres)])
         if self.solo_kind is None and self.paires:
             jouees = [c for c in [remplace] + list(self.columns) if c is not None]
             paires = [p for c in jouees for p in self.partenaires(c) if p in tous]
