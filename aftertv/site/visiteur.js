@@ -70,6 +70,11 @@ const T = {
   sIgfm: 'Intergalactic FM',
   sMicro: 'Microphone',
   sMicroNote: 'Less precise',
+  sCarte: 'Sound card',
+  sCarteNote: 'Line in, mixer',
+  carteEntree: 'Input',
+  carteBloquee:
+    'The sound card input is blocked or missing. Allow the microphone in the address bar of your browser, plug the card in, or listen to Intergalactic FM instead.',
   sAucune: 'Off',
   touchesTap: 'F fullscreen · Space tap · P panel · Esc close',
   touches: 'F fullscreen · P panel · Esc close',
@@ -162,6 +167,22 @@ const demanderMicro = () => {
     return null;
   }
 };
+const demanderCarte = (appareil) => {
+  try {
+    const audio = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      channelCount: { ideal: 2 },
+    };
+    if (appareil) audio.deviceId = { exact: appareil };
+    const p = navigator.mediaDevices?.getUserMedia?.({ audio });
+    p?.catch(() => {});
+    return p || null;
+  } catch {
+    return null;
+  }
+};
 const styleMoteur = (s) =>
   s === 'house' || s === 'techno' ? s : s === 'tout' || s === 'auto' ? 'auto' : 'house';
 function installerVisiteur(api) {
@@ -225,6 +246,8 @@ function installerVisiteur(api) {
   }
   const r0 = lireReglages();
   let source = null;
+  let entreesCarte = [];
+  let appareilCarte = null;
   let radioN = r0.radio;
   let ecoute = false;
   let radioSeule = null;
@@ -370,8 +393,9 @@ function installerVisiteur(api) {
         else if (['system', 'tab', 'mic'].includes(s.source) || (s.source === 'radio' && estMutant(radioN)))
           titreAuto?.demarrer();
         else titreAuto?.arreter();
-        if (['system', 'radio', 'mic'].includes(s.source))
-          ecrireReglages({ ...lireReglages(), source: s.source });
+        const choisie = source === 'carte' && s.source === 'mic' ? 'carte' : s.source;
+        if (['system', 'radio', 'mic', 'carte'].includes(choisie))
+          ecrireReglages({ ...lireReglages(), source: choisie });
         majTout();
       } else if (s.phase === 'stopped') {
         ecoute = false;
@@ -419,6 +443,17 @@ function installerVisiteur(api) {
         const m = demanderMicro();
         if (m) options.micro = m;
       }
+      if (src === 'carte') {
+        const m = demanderCarte(lireReglages().carte || null);
+        if (m) {
+          options.micro = m;
+          m.then((flux2) => {
+            appareilCarte = flux2.getAudioTracks()[0]?.getSettings?.().deviceId || null;
+            return listerEntrees();
+          }).catch(() => {});
+        }
+      }
+      const srcMoteur = src === 'carte' ? 'mic' : src;
       if (src === 'radio' && radioSeule && radioSeule.src === flux(radioN)) {
         options.audio = radioSeule;
         lacherRadioSeule();
@@ -444,9 +479,9 @@ function installerVisiteur(api) {
       if (src === 'system' || src === 'tab') montrerConsignePartage(src);
       try {
         promesse = moteur
-          ? moteur.demarrer(src, options)
+          ? moteur.demarrer(srcMoteur, options)
           : obtenirMoteur().then((m) => {
-              if (ici === jeton) return m.demarrer(src, options);
+              if (ici === jeton) return m.demarrer(srcMoteur, options);
               libererOptions(options);
               return void 0;
             });
@@ -653,6 +688,12 @@ function installerVisiteur(api) {
       erreur = {
         texte: T.microBloque,
         actions: [{ texte: T.reessayer, action: () => choisir('mic') }, radio],
+      };
+    } else if (src === 'carte') {
+      ecrireReglages({ ...lireReglages(), carte: null });
+      erreur = {
+        texte: T.carteBloquee,
+        actions: [{ texte: T.reessayer, action: () => choisir('carte') }, radio],
       };
     } else if (src === 'system') {
       erreur = {
@@ -904,7 +945,11 @@ function installerVisiteur(api) {
     if (testMutant && !direct()) return { src: 'radio', n: MUTANT.n };
     if (!telephone || direct()) return null;
     const r = lireReglages();
-    return r.source === 'radio' ? { src: 'radio', n: r.radio } : { src: 'mic' };
+    return r.source === 'radio'
+      ? { src: 'radio', n: r.radio }
+      : r.source === 'carte'
+        ? { src: 'carte' }
+        : { src: 'mic' };
   }
   const boutonVoir = () => ({
     texte: T.entrer,
@@ -1211,6 +1256,50 @@ function installerVisiteur(api) {
     const bpm = tempo ? `${Math.round(tempo)} BPM` : '';
     return genre && bpm ? `${genre} · ${bpm}` : bpm;
   }
+  async function listerEntrees() {
+    try {
+      const tous = await navigator.mediaDevices.enumerateDevices();
+      entreesCarte = tous.filter(
+        (d) => d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'communications' && d.label,
+      );
+    } catch {
+      entreesCarte = [];
+    }
+    majEntreesCarte();
+  }
+  function majEntreesCarte() {
+    const zone = document.querySelector('.entrees-carte');
+    if (!zone) return;
+    const voir = source === 'carte' && !direct() && entreesCarte.length > 1;
+    zone.hidden = !voir;
+    if (!voir) return;
+    const cle = entreesCarte.map((d) => d.deviceId).join('|');
+    if (zone.dataset.cle !== cle) {
+      zone.dataset.cle = cle;
+      zone.replaceChildren(
+        ...entreesCarte.map((d) =>
+          el(
+            'button',
+            {
+              class: 'chip',
+              type: 'button',
+              role: 'radio',
+              'data-entree': d.deviceId,
+              'aria-checked': 'false',
+              title: d.label,
+              onclick: () => {
+                ecrireReglages({ ...lireReglages(), carte: d.deviceId });
+                choisir('carte');
+              },
+            },
+            d.label.replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, ''),
+          ),
+        ),
+      );
+    }
+    for (const b of zone.querySelectorAll('[data-entree]'))
+      b.setAttribute('aria-checked', String(b.dataset.entree === appareilCarte));
+  }
   function majSources() {
     const box = $('sources');
     if (!box) return;
@@ -1289,6 +1378,8 @@ function installerVisiteur(api) {
       }
       autres.push(
         ligne('mic', T.sMicro, () => choisir('mic'), T.sMicroNote),
+        ligne('carte', T.sCarte, () => choisir('carte'), T.sCarteNote),
+        el('div', { class: 'entrees-carte', role: 'radiogroup', 'aria-label': T.carteEntree, hidden: true }),
         ligne('off', T.sAucune, () => choisir('off')),
       );
       if (peutCapter)
@@ -1310,7 +1401,11 @@ function installerVisiteur(api) {
       const texte = chauffe ? T.chauffe : T.sOrdinateur;
       if (libelle.textContent !== texte) libelle.textContent = texte;
     }
-    for (const b of box.querySelectorAll("[data-source='system'], [data-source='mic']")) b.hidden = direct();
+    for (const b of box.querySelectorAll(
+      "[data-source='system'], [data-source='mic'], [data-source='carte']",
+    ))
+      b.hidden = direct();
+    majEntreesCarte();
     majLien();
     const actuelle = source === 'radio' ? `radio-${radioN}` : source || 'off';
     for (const b of box.querySelectorAll('[data-source]'))

@@ -5,7 +5,15 @@ const stockage = (depart = {}) => {
   const m = new Map(Object.entries(depart));
   return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) };
 };
-const ATTENDUS = { style: 'house', tags: [], coupesRapides: null, sd: false, source: null, radio: 1 };
+const ATTENDUS = {
+  style: 'house',
+  tags: [],
+  coupesRapides: null,
+  sd: false,
+  source: null,
+  radio: 1,
+  carte: null,
+};
 test("défauts quand rien n'est gardé", () => {
   assert.deepEqual(lireReglages(stockage()), ATTENDUS);
   assert.deepEqual(DEFAUTS, ATTENDUS);
@@ -34,9 +42,18 @@ test("aller-retour : ce qu'on écrit, on le relit", () => {
     sd: true,
     source: 'radio',
     radio: 3,
+    carte: null,
   };
   ecrireReglages(r, s);
   assert.deepEqual(lireReglages(s), r);
+});
+test('la carte son et son entrée se gardent ; une entrée vide revient à celle par défaut', () => {
+  const s = stockage();
+  ecrireReglages({ ...lireReglages(s), source: 'carte', carte: 'abc123' }, s);
+  assert.equal(lireReglages(s).source, 'carte');
+  assert.equal(lireReglages(s).carte, 'abc123');
+  ecrireReglages({ ...lireReglages(s), carte: '' }, s);
+  assert.equal(lireReglages(s).carte, null);
 });
 test('une valeur abîmée retombe sur son défaut, les autres restent', () => {
   const s = stockage({ 'aftertv.reglages': JSON.stringify({ style: 3, tags: 'rouge', radio: 9, sd: true }) });

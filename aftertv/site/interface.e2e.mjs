@@ -292,7 +292,7 @@ const ESPION = () => {
   const gum = navigator.mediaDevices?.getUserMedia?.bind(navigator.mediaDevices);
   if (gum)
     navigator.mediaDevices.getUserMedia = (c) => {
-      window.__micros.push({ actif: navigator.userActivation.isActive });
+      window.__micros.push({ actif: navigator.userActivation.isActive, audio: c?.audio });
       return gum(c);
     };
   window.__lectures = [];
@@ -2573,6 +2573,64 @@ try {
       }),
       'Source : Computer sound devant, les autres sources dans le repli',
     );
+    await page.evaluate(() => {
+      window.__micros.length = 0;
+      window.__faux.demarres.length = 0;
+    });
+    await cliqueSource(page, 'carte');
+    await page.waitForFunction(
+      () =>
+        window.__visiteur.ecoute() &&
+        document.querySelector("[data-source='carte']").getAttribute('aria-checked') === 'true',
+      null,
+      { timeout: 8e3 },
+    );
+    const ca = await page.evaluate(() => ({
+      demarres: window.__faux.demarres.join(),
+      micros: window.__micros,
+      options: window.__faux.options,
+    }));
+    verifie(
+      ca.demarres === 'mic' &&
+        ca.options.micro &&
+        ca.micros.length === 1 &&
+        ca.micros[0].actif &&
+        ca.micros[0].audio.echoCancellation === false &&
+        ca.micros[0].audio.noiseSuppression === false &&
+        ca.micros[0].audio.autoGainControl === false,
+      `Sound card : l'entrée demandée dans le clic, sans traitement, le moteur la reçoit comme un micro (${JSON.stringify(ca)})`,
+    );
+    await page.waitForFunction(() => !document.querySelector('.entrees-carte').hidden, null, {
+      timeout: 5e3,
+    });
+    const puces = await page.$$eval('.entrees-carte .chip', (bs) =>
+      bs.map((b) => ({ id: b.dataset.entree, nom: b.textContent })),
+    );
+    verifie(puces.length > 1, `Sound card : ses entrées en puces (${puces.map((x) => x.nom).join(', ')})`);
+    const autre = puces[puces.length - 1];
+    await page.click(`.entrees-carte [data-entree='${autre.id}']`);
+    await page.waitForFunction(
+      (id) => window.__micros.some((m) => m.audio?.deviceId?.exact === id) && window.__visiteur.ecoute(),
+      autre.id,
+      { timeout: 8e3 },
+    );
+    verifie(
+      (await page.evaluate(() => JSON.parse(localStorage.getItem('aftertv.reglages') || '{}').carte)) ===
+        autre.id,
+      "Sound card : l'entrée choisie est gardée",
+    );
+    await page.waitForFunction(
+      (id) =>
+        document.querySelector(`.entrees-carte [data-entree='${id}']`)?.getAttribute('aria-checked') ===
+        'true',
+      autre.id,
+      { timeout: 5e3 },
+    );
+    verifie(true, "Sound card : la puce de l'entrée qui joue est cochée");
+    await page.evaluate(() =>
+      document.querySelector("[data-section='source']").scrollIntoView({ block: 'center' }),
+    );
+    await capture(page, 'C-carte-son');
     await page.evaluate(() =>
       document.querySelector("[data-section='source']").scrollIntoView({ block: 'center' }),
     );

@@ -788,6 +788,21 @@ html.panneau-ouvert .flottant {
   color: inherit;
   opacity: 0.7;
 }
+#panneau .entrees-carte {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s1) 0 var(--s2);
+}
+#panneau .entrees-carte[hidden] {
+  display: none;
+}
+#panneau .entrees-carte .chip {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 #panneau .source[aria-checked='true'] {
   background: var(--ink);
   color: #000;

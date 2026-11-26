@@ -1,5 +1,5 @@
 const CLE = 'aftertv.reglages';
-const SOURCES = ['system', 'radio', 'mic'];
+const SOURCES = ['system', 'radio', 'mic', 'carte'];
 const DEFAUTS = Object.freeze({
   style: 'house',
   tags: Object.freeze([]),
@@ -7,6 +7,7 @@ const DEFAUTS = Object.freeze({
   sd: false,
   source: null,
   radio: 1,
+  carte: null,
 });
 const stockageDuNavigateur = () => {
   try {
@@ -24,6 +25,7 @@ function nettoyer(brut) {
     sd: typeof o.sd === 'boolean' ? o.sd : DEFAUTS.sd,
     source: SOURCES.includes(o.source) ? o.source : DEFAUTS.source,
     radio: [1, 2, 3, 4].includes(o.radio) ? o.radio : DEFAUTS.radio,
+    carte: typeof o.carte === 'string' && o.carte ? o.carte : DEFAUTS.carte,
   };
 }
 function lireReglages(stockage = stockageDuNavigateur()) {
