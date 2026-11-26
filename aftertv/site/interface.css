@@ -1248,8 +1248,30 @@ html.interface #avance.fin time {
   flex: none;
   font-size: var(--t-meta);
 }
+#panneau .groupe-sources {
+  display: grid;
+  gap: var(--s1);
+}
+#panneau .groupe-sources + .groupe-sources {
+  margin-top: var(--s4);
+}
+#panneau .titre-groupe {
+  padding: var(--s1) 0;
+  font-size: 10px;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
 #panneau .credit-source {
-  margin-top: var(--s2);
+  display: grid;
+  gap: 2px;
+  margin-top: var(--s1);
+}
+#panneau .credit-source .credit-radio {
+  margin: 0;
+}
+#panneau #sources > [data-source='off'] {
+  margin-top: var(--s3);
 }
 #suggestion-radio {
   position: fixed;
@@ -1514,6 +1536,18 @@ html.lecture #suggestion-radio p {
   border-radius: 50%;
   background: currentColor;
 }
+#panneau .mode-tap {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s3);
+}
+#panneau .mode-tap[hidden] {
+  display: none;
+}
+#panneau .mode-tap .puce-mode {
+  margin-top: 0 !important;
+}
 #panneau .puce-mode {
   display: inline-block;
   justify-self: start;
@@ -1566,8 +1600,9 @@ html.lecture #suggestion-radio p {
   display: none;
 }
 .lampe i {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   border: 1px solid var(--rule-strong);
 }
 .lampe[data-etat='trouve'] {
@@ -1695,6 +1730,15 @@ html.lecture #suggestion-radio p {
   letter-spacing: var(--track-button);
   text-transform: uppercase;
   font-size: var(--t-meta);
+}
+#panneau .coller {
+  flex-direction: row-reverse;
+  border-color: var(--rule);
+}
+#panneau .coller-texte {
+  letter-spacing: normal;
+  text-transform: none;
+  font-size: var(--t-body);
 }
 .lien-message {
   margin: 0;

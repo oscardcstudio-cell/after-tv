@@ -70,6 +70,9 @@ const T = {
   sIgfm: 'Intergalactic FM',
   sMicro: 'Microphone',
   sMicroNote: 'Less precise',
+  gRadios: 'Radio',
+  gEntrees: 'Audio input',
+  mode: 'Mode',
   sCarte: 'Sound card',
   sCarteNote: 'Line in, mixer',
   carteEntree: 'Input',
@@ -1139,7 +1142,12 @@ function installerVisiteur(api) {
               ),
             ),
           ),
-          el('span', { class: 'puce-mode', id: 'tap-mode', hidden: true }),
+          el(
+            'div',
+            { class: 'mode-tap' },
+            el('span', { class: 'meta' }, T.mode),
+            el('span', { class: 'puce-mode', id: 'tap-mode', hidden: true }),
+          ),
           pli(
             'reglages-tap',
             T.reglerTap,
@@ -1318,7 +1326,8 @@ function installerVisiteur(api) {
           el('span', {}, texte),
           note ? el('span', { class: 'meta' }, note) : null,
         );
-      const autres = [];
+      const radios = [],
+        entrees = [];
       if (peutCapter) {
         const sys2 = ligne('system', T.sOrdinateur, () => choisir('system'));
         sys2.append(
@@ -1331,7 +1340,7 @@ function installerVisiteur(api) {
         );
         box.append(sys2, boutonLien(), ligneLecteur());
       }
-      autres.push(
+      radios.push(
         el(
           'button',
           {
@@ -1347,7 +1356,7 @@ function installerVisiteur(api) {
         ),
       );
       for (const r of RADIOS) {
-        autres.push(
+        radios.push(
           el(
             'button',
             {
@@ -1376,16 +1385,41 @@ function installerVisiteur(api) {
           ),
         );
       }
-      autres.push(
+      entrees.push(
         ligne('mic', T.sMicro, () => choisir('mic'), T.sMicroNote),
         ligne('carte', T.sCarte, () => choisir('carte'), T.sCarteNote),
         el('div', { class: 'entrees-carte', role: 'radiogroup', 'aria-label': T.carteEntree, hidden: true }),
-        ligne('off', T.sAucune, () => choisir('off')),
       );
+      const groupe = (cle, titre, ...lignes) =>
+        el(
+          'div',
+          { class: `groupe-sources groupe-${cle}` },
+          el('span', { class: 'titre-groupe' }, titre),
+          ...lignes,
+        );
+      const autres = [
+        groupe(
+          'radios',
+          T.gRadios,
+          ...radios,
+          el(
+            'div',
+            { class: 'credit-source' },
+            creditRadio(),
+            el(
+              'p',
+              { class: 'credit-radio' },
+              T.creditMutant,
+              el('a', { href: MUTANT.site, target: '_blank', rel: 'noopener' }, MUTANT.lienTexte),
+            ),
+          ),
+        ),
+        groupe('entrees', T.gEntrees, ...entrees),
+      ];
       if (peutCapter)
         box.append(pli('autres-sources', T.autresSources, el('div', { class: 'sources' }, ...autres)));
       else box.append(...autres);
-      box.after(el('div', { class: 'credit-source' }, creditRadio()));
+      box.append(ligne('off', T.sAucune, () => choisir('off')));
     }
     for (const b of box.querySelectorAll('.source-radio')) {
       if (b.dataset.source === `radio-${radioN}`) b.dataset.derniere = 'true';
@@ -1464,10 +1498,12 @@ function installerVisiteur(api) {
   function suivreMode(puce) {
     const src = document.getElementById('mode');
     if (!src || !puce) return;
+    const ligne = puce.closest('.mode-tap');
     const copie = () => {
       const t = src.textContent.trim();
       puce.textContent = t;
       puce.hidden = !t;
+      if (ligne) ligne.hidden = !t;
     };
     new MutationObserver(copie).observe(src, { childList: true, characterData: true, subtree: true });
     copie();
