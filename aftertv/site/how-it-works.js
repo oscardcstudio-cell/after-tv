@@ -2288,86 +2288,7 @@ async function demarrer() {
     if (!el.__fait) {
       el.__fait = true;
       el.append(
-        h(
-          'div',
-          { class: 'bloc' },
-          titreBloc('The signal on this beat', ''),
-          h(
-            'div',
-            { class: 'signal-v' },
-            h(
-              'div',
-              { class: 'sv-tuile sv-cle' },
-              h(
-                'div',
-                { class: 'pole-tete' },
-                h('span', { class: 'pole-nom', text: 'Key and chord' }),
-                h('span', { class: 'pole-mot' }),
-              ),
-              clavierGrand(),
-              h('small', {
-                class: 'sv-leg',
-                text: 'grey: the notes of the key · filled: its home note · dots: the chord',
-              }),
-            ),
-            h(
-              'div',
-              { class: 'sv-tuile sv-melodie' },
-              h(
-                'div',
-                { class: 'pole-tete' },
-                h('span', { class: 'pole-nom', text: 'Melody, this bar' }),
-                h('span', { class: 'pole-mot' }),
-              ),
-              h(
-                'div',
-                { class: 'roll' },
-                h('div', { class: 'roll-noms' }),
-                h(
-                  'div',
-                  { class: 'roll-pistes' },
-                  h(
-                    'div',
-                    { class: 'roll-nums' },
-                    [1, 2, 3, 4].map((n2) => h('span', { text: n2 })),
-                  ),
-                  h('i', { class: 'roll-temps' }),
-                  h('div', { class: 'roll-lignes' }),
-                ),
-              ),
-              h('small', {
-                class: 'sv-leg',
-                text: 'beats 1 to 4, left to right · one line per note, highest on top · a long mark is a held note',
-              }),
-            ),
-            h(
-              'div',
-              { class: 'sv-tuile sv-filtre' },
-              h(
-                'div',
-                { class: 'pole-tete' },
-                h('span', { class: 'pole-nom', text: 'Filter' }),
-                h('span', { class: 'pole-mot' }),
-              ),
-              h(
-                'div',
-                { class: 'filtre' },
-                h('i', { class: 'filtre-passe' }),
-                h('i', { class: 'filtre-coupe' }),
-              ),
-              h(
-                'div',
-                { class: 'pole-bornes' },
-                h('small', { text: '20 Hz, low' }),
-                h('small', { text: 'high, 20 kHz' }),
-              ),
-            ),
-            pole('brillance', 'Brightness', 'dull', 'bright'),
-            pole('espace', 'Space', 'dry', 'reverberant'),
-            pole('dynamique', 'Dynamics', 'squashed', 'airy'),
-          ),
-          h('p', { class: 'discret src-note' }),
-        ),
+        h('p', { class: 'discret src-note' }),
         h(
           'div',
           { class: 'bloc' },
@@ -2385,83 +2306,6 @@ async function demarrer() {
     const s = v.source;
     const f = v.ecoute || {};
     const bouge = (k) => (f[k] && f[k] !== 'stable' ? motEn(f[k]) : null);
-    const sig = el.querySelector('.signal-v');
-    majClavier(sig.querySelector('.clavier'), f.tonalite, f.accord);
-    texte(
-      sig.querySelector('.sv-cle .pole-mot'),
-      [tonaliteEn(f.tonalite), accordEn(f.accord) ? `chord ${accordEn(f.accord)}` : '']
-        .filter(Boolean)
-        .join(' · ') || 'not heard yet',
-    );
-    const lignes = lignesMelodie(f.suite);
-    const cleRoll = f.suite == null ? 'attente' : String(f.suite);
-    bloc(sig.querySelector('.roll-noms'), cleRoll, () => lignes.map((l) => h('span', { text: l.note })));
-    bloc(sig.querySelector('.roll-lignes'), cleRoll, () =>
-      lignes.length
-        ? lignes.map((l) =>
-            h(
-              'div',
-              { class: 'roll-piste' },
-              l.traits.map(([x, n2]) =>
-                h('i', { style: `--x:${x};--l:${n2}`, 'data-de': x, 'data-a': x + n2 }),
-              ),
-            ),
-          )
-        : h('p', {
-            class: 'roll-vide',
-            text: f.suite == null ? 'waiting for the sound' : 'no melody in this bar',
-          }),
-    );
-    if (Number.isInteger(v.temps)) {
-      sig.querySelector('.roll-temps').style.transform = `translateX(${(v.temps - 1) * 100}%)`;
-      const de = (v.temps - 1) * 4,
-        a = v.temps * 4;
-      sig
-        .querySelectorAll('.roll-piste i')
-        .forEach((t) => t.classList.toggle('on', +t.dataset.de < a && +t.dataset.a > de));
-    }
-    texte(
-      sig.querySelector('.sv-melodie .pole-mot'),
-      suiteEn(f.suite)
-        ? [
-            ...new Set(
-              suiteEn(f.suite)
-                .split(' ')
-                .filter((x) => x !== '·'),
-            ),
-          ].join(' ') || 'silent bar'
-        : 'not heard yet',
-    );
-    const fx = partFreq(f.filtre_hz);
-    const passe = sig.querySelector('.filtre-passe');
-    const haut = f.filtre_type === 'passe-haut';
-    passe.style.transformOrigin = haut ? '100% 50%' : '0 50%';
-    passe.style.transform = `scaleX(${fx == null ? 0 : haut ? 1 - fx : fx})`;
-    sig.querySelector('.filtre-coupe').style.transform = `translateX(${(fx ?? 0) * 100}%)`;
-    sig.querySelector('.filtre').classList.toggle('absent', fx == null);
-    texte(
-      sig.querySelector('.sv-filtre .pole-mot'),
-      fx == null
-        ? 'not heard yet'
-        : `${haut ? 'from' : 'up to'} ${(f.filtre_hz / 1e3).toFixed(1)} kHz${bouge('filtre') ? `, ${bouge('filtre')}` : ''}`,
-    );
-    majPole(sig, 'brillance', f.brillance, motEn(f.brillance_mot));
-    majPole(
-      sig,
-      'espace',
-      f.espace,
-      f.espace_mot
-        ? `${motEn(f.espace_mot)}${Number.isFinite(f.espace_rt60) ? `, reverb ${f.espace_rt60.toFixed(1)} s` : ''}`
-        : null,
-    );
-    majPole(
-      sig,
-      'dynamique',
-      f.dynamique,
-      f.dynamique_mot
-        ? `${motEn(f.dynamique_mot)}${Number.isFinite(f.dynamique_db) ? `, ${f.dynamique_db.toFixed(0)} dB range` : ''}`
-        : null,
-    );
     texte(
       el.querySelector('.src-note'),
       S.mode === 'rejeu'
@@ -2543,10 +2387,114 @@ async function demarrer() {
         h(
           'div',
           { class: 'bloc' },
+          titreBloc('Key and melody', ''),
+          h(
+            'div',
+            { class: 'signal-v' },
+            h(
+              'div',
+              { class: 'sv-tuile sv-cle' },
+              h(
+                'div',
+                { class: 'pole-tete' },
+                h('span', { class: 'pole-nom', text: 'Key and chord' }),
+                h('span', { class: 'pole-mot' }),
+              ),
+              clavierGrand(),
+              h('small', {
+                class: 'sv-leg',
+                text: 'grey: the notes of the key · filled: its home note · dots: the chord',
+              }),
+            ),
+            h(
+              'div',
+              { class: 'sv-tuile sv-melodie' },
+              h(
+                'div',
+                { class: 'pole-tete' },
+                h('span', { class: 'pole-nom', text: 'Melody, this bar' }),
+                h('span', { class: 'pole-mot' }),
+              ),
+              h(
+                'div',
+                { class: 'roll' },
+                h('div', { class: 'roll-noms' }),
+                h(
+                  'div',
+                  { class: 'roll-pistes' },
+                  h(
+                    'div',
+                    { class: 'roll-nums' },
+                    [1, 2, 3, 4].map((n) => h('span', { text: n })),
+                  ),
+                  h('i', { class: 'roll-temps' }),
+                  h('div', { class: 'roll-lignes' }),
+                ),
+              ),
+              h('small', {
+                class: 'sv-leg',
+                text: 'beats 1 to 4, left to right · one line per note, highest on top · a long mark is a held note',
+              }),
+            ),
+          ),
+        ),
+        h(
+          'div',
+          { class: 'bloc' },
           titreBloc('Genre, YAMNet', ''),
           h('div', { class: 'genres' }),
           h('p', { class: 'discret suit' }),
         ),
+      );
+    }
+    {
+      const f = v.ecoute || {};
+      const sig = el.querySelector('.signal-v');
+      majClavier(sig.querySelector('.clavier'), f.tonalite, f.accord);
+      texte(
+        sig.querySelector('.sv-cle .pole-mot'),
+        [tonaliteEn(f.tonalite), accordEn(f.accord) ? `chord ${accordEn(f.accord)}` : '']
+          .filter(Boolean)
+          .join(' · ') || 'not heard yet',
+      );
+      const lignes = lignesMelodie(f.suite);
+      const cleRoll = f.suite == null ? 'attente' : String(f.suite);
+      bloc(sig.querySelector('.roll-noms'), cleRoll, () => lignes.map((l) => h('span', { text: l.note })));
+      bloc(sig.querySelector('.roll-lignes'), cleRoll, () =>
+        lignes.length
+          ? lignes.map((l) =>
+              h(
+                'div',
+                { class: 'roll-piste' },
+                l.traits.map(([x, n]) =>
+                  h('i', { style: `--x:${x};--l:${n}`, 'data-de': x, 'data-a': x + n }),
+                ),
+              ),
+            )
+          : h('p', {
+              class: 'roll-vide',
+              text: f.suite == null ? 'waiting for the sound' : 'no melody in this bar',
+            }),
+      );
+      if (Number.isInteger(v.temps)) {
+        sig.querySelector('.roll-temps').style.transform = `translateX(${(v.temps - 1) * 100}%)`;
+        const de = (v.temps - 1) * 4,
+          a = v.temps * 4;
+        sig
+          .querySelectorAll('.roll-piste i')
+          .forEach((t) => t.classList.toggle('on', +t.dataset.de < a && +t.dataset.a > de));
+      }
+      texte(
+        sig.querySelector('.sv-melodie .pole-mot'),
+        suiteEn(f.suite)
+          ? [
+              ...new Set(
+                suiteEn(f.suite)
+                  .split(' ')
+                  .filter((x) => x !== '·'),
+              ),
+            ].join(' ') || 'silent bar'
+          : 'not heard yet',
       );
     }
     el.querySelector('.bpm').innerHTML = v.bpm ? `${v.bpm.toFixed(1)}<small>BPM</small>` : '–';
@@ -2562,7 +2510,7 @@ async function demarrer() {
     texte(el.querySelector('.bloc:nth-child(1) h3 .droite'), v.temps ? `beat ${v.temps} of the bar` : '');
     const g = S.genre;
     texte(
-      el.querySelector('.bloc:nth-child(2) h3 .droite'),
+      el.querySelector('.bloc:nth-child(3) h3 .droite'),
       g && Number.isFinite(g.music) ? `music ${pc(g.music)} · every 5 s` : 'every 5 s',
     );
     const labels = g?.labels || [];
@@ -2716,7 +2664,7 @@ async function demarrer() {
           h(
             'div',
             null,
-            h('h3', { class: 'p4-t', text: 'Bars, in 8s' }),
+            h('h3', { class: 'p4-t', text: 'Bar of the 8-bar phrase' }),
             h(
               'div',
               { class: 'phrase8' },
@@ -2733,17 +2681,6 @@ async function demarrer() {
               h('span', { class: 'p4-drop-n' }),
               h('small', { class: 'p4-drop-txt' }),
             ),
-          ),
-          h(
-            'div',
-            null,
-            h('h3', { class: 'p4-t', text: 'Loops on screen' }),
-            h(
-              'div',
-              { class: 'p4-ecrans' },
-              [0, 1, 2].map(() => h('i')),
-            ),
-            h('small', { class: 'p4-ecrans-txt' }),
           ),
         ),
       );
@@ -2887,10 +2824,10 @@ async function demarrer() {
     );
   };
   const DESC_MODES = {
-    drop: 'The full edit. One dominant loop carries the sequence and the others pass around it (V68).',
-    break: 'Fewer changes. A long break keeps its loop on screen (V72) and hyper waits until it ends (V85).',
+    drop: 'The full edit. One main loop carries the sequence and the others pass around it.',
+    break: 'Fewer changes. A long break keeps its loop on screen, and hyper waits until it ends.',
     suspension:
-      'The kick drops out mid-drop while the bass holds. The edit holds its breath for 2 beats or more, until the kick returns (V82).',
+      'The kick drops out mid-drop while the bass holds. The edit holds its breath for 2 beats or more, until the kick returns.',
     hyper: 'The sound gets fuller than usual: 4 bars of loops tagged hyper.',
   };
   VUES[5] = () => {
@@ -2959,12 +2896,6 @@ async function demarrer() {
           titreBloc('What the sound is made of', ''),
           h('div', { class: 'matiere' }, h('div', { class: 'mots' }), h('div', { class: 'vers' })),
         ),
-        h(
-          'div',
-          { class: 'bloc' },
-          titreBloc('Measured, not used by the edit yet'),
-          h('dl', { class: 'rangs mesure' }),
-        ),
       );
     }
     const f = v.ecoute || {};
@@ -3008,12 +2939,14 @@ async function demarrer() {
       .filter((x) => x.valeur);
     texte(
       el.querySelector('.bloc:nth-child(1) h3 .droite'),
-      props.length ? (v.autopilot ? 'tie-break on' : 'autopilot off: no tie-break') : '',
+      props.length ? (v.autopilot ? 'shapes the choice' : 'autopilot off') : '',
     );
     bloc(el.querySelector('.vers'), JSON.stringify(props), () => [
       h('div', {
         class: 'discret',
-        text: props.length ? 'Loops favored when the edit hesitates:' : 'No visual tag favored yet.',
+        text: props.length
+          ? 'When two loops are equally good, the one that looks like this wins:'
+          : 'No look favored yet.',
       }),
       ...props.map((x) =>
         h(
@@ -3028,51 +2961,6 @@ async function demarrer() {
         ),
       ),
     ]);
-    const bouge = (k) => (f[k] && f[k] !== 'stable' ? motEn(f[k]) : null);
-    const mesures = [
-      [
-        'Swing',
-        f.swing ? `${motEn(f.swing) ?? '–'}${f.swing_pct != null ? ` (${f.swing_pct}%)` : ''}` : null,
-      ],
-      [
-        'Groove',
-        [
-          f.pompage ? 'sidechain pump' : '',
-          f.fill ? 'drum fill' : '',
-          f.demi_temps ? 'half-time feel' : '',
-          f.crash ? 'crash' : '',
-        ]
-          .filter(Boolean)
-          .join(', ') || (f.swing !== void 0 ? 'nothing marked' : null),
-      ],
-      [
-        'Build-up',
-        f.montee != null
-          ? [
-              `signs ${pc(f.montee)}`,
-              bouge('filtre') ? `filter ${bouge('filtre')}` : '',
-              bouge('bruit') ? `noise ${bouge('bruit')}` : '',
-              bouge('hauteur') ? `pitch ${bouge('hauteur')}` : '',
-            ]
-              .filter(Boolean)
-              .join(', ')
-          : null,
-      ],
-      [
-        'Part lengths',
-        f.longueurs && Object.keys(f.longueurs).length
-          ? Object.entries(f.longueurs)
-              .map(([k, n]) => `${(nomPartie(k) ?? k).toLowerCase()} ${n} bars`)
-              .join(', ')
-          : null,
-      ],
-    ];
-    bloc(el.querySelector('.rangs.mesure'), JSON.stringify(mesures), () =>
-      mesures.flatMap(([k, w]) => [
-        h('dt', { text: k }),
-        h('dd', { class: w ? null : 'absent', text: w ?? 'not heard yet' }),
-      ]),
-    );
   };
   const libelleLoop = (l) =>
     [

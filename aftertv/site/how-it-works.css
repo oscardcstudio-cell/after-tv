@@ -2618,6 +2618,16 @@ body {
   background: var(--ink);
   opacity: 0.18;
 }
+.schema .pv.pv-temps,
+.schema .pv.pv-cle,
+.schema .pv.pv-genre,
+.schema .pv.pv-phrase,
+.schema .pv.pv-drop,
+.schema .pv.pv-couches,
+.schema .pv.pv-coupes,
+.schema .pv.pv-geste {
+  display: none;
+}
 .schema-sources {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr) var(--flux-w)) minmax(0, 1fr);
