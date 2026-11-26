@@ -28,9 +28,8 @@ const T = {
   suggestionFermer: 'Dismiss the radio suggestion',
   micro: 'Use the microphone (less precise)',
   aidePartage: 'In the share dialog, tick "Share system audio" (or "Share tab audio" when you pick a tab).',
-  consigneSysteme:
-    'In the window that opens: pick your screen, switch on "Also share system audio" at the bottom left, then Share.',
-  consigneOnglet: 'In the window that opens: keep "Also share tab audio" on, then Share.',
+  consigneSysteme: 'Pick your screen, turn on “Also share system audio”, then Share.',
+  consigneOnglet: 'Keep “Also share tab audio” on, then Share.',
   aideSansCapture: 'This browser cannot listen to your computer, so the radio and the microphone are yours.',
   entrer: 'Enter',
   chauffe: 'Warming up',
@@ -506,12 +505,7 @@ function installerVisiteur(api) {
   function montrerConsignePartage(src) {
     let c = $('consigne-partage');
     if (!c) {
-      c = el(
-        'div',
-        { id: 'consigne-partage', role: 'status' },
-        el('span', { class: 'fleche-consigne', 'aria-hidden': 'true' }, '↙'),
-        el('p'),
-      );
+      c = el('div', { id: 'consigne-partage', role: 'status' }, el('p'));
       document.body.append(c);
     }
     c.querySelector('p').textContent = src === 'tab' ? T.consigneOnglet : T.consigneSysteme;
