@@ -1,6 +1,6 @@
 const TAILLE_MAX = 64 * 1024;
 const GARDE_MS = 3e4;
-var m4_default = {
+var m0_default = {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors() });
@@ -93,4 +93,4 @@ class Canal {
     } catch {}
   }
 }
-export { Canal, m4_default as default };
+export { Canal, m0_default as default };

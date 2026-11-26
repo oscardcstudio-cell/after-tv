@@ -3434,26 +3434,48 @@ body {
   color: var(--ink-faint);
 }
 .roll {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--s2);
+  --ligne: 14px;
+  --ecart: 5px;
+  --tete: 18px;
+}
+.roll-noms {
+  display: grid;
+  grid-auto-rows: var(--ligne);
+  row-gap: var(--ecart);
+  padding-top: var(--tete);
+  min-width: 22px;
+}
+.roll-noms span {
+  font-size: 10px;
+  line-height: var(--ligne);
+  color: var(--ink-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.roll-pistes {
   position: relative;
-  height: 72px;
-  border: 1px solid var(--rule);
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0 calc(25% - 1px),
-    var(--rule) calc(25% - 1px) 25%
-  );
+  padding-top: var(--tete);
+  min-height: calc(var(--tete) + 3 * var(--ligne) + 2 * var(--ecart));
+  background: repeating-linear-gradient(90deg, var(--rule) 0 1px, transparent 1px 25%) 0 var(--tete) / 100%
+    calc(100% - var(--tete)) no-repeat;
 }
-.roll-notes {
+.roll-nums {
   position: absolute;
-  inset: 2px;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--tete);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
 }
-.roll-notes i {
-  position: absolute;
-  left: calc(var(--x) * 100% / 16);
-  bottom: calc(var(--y) * 100% / 12);
-  width: calc(100% / 16 - 2px);
-  height: calc(100% / 12);
-  background: var(--ink);
+.roll-nums span {
+  padding-left: 5px;
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--ink-faint);
 }
 .roll-temps {
   position: absolute;
@@ -3461,9 +3483,47 @@ body {
   bottom: 0;
   left: 0;
   width: 25%;
-  border: 1px solid var(--ink-muted);
-  background: rgba(242, 242, 242, 0.06);
+  background: rgba(242, 242, 242, 0.07);
   transition: transform 160ms var(--ease-out);
+  pointer-events: none;
+}
+.roll-lignes {
+  position: relative;
+  display: grid;
+  grid-auto-rows: var(--ligne);
+  row-gap: var(--ecart);
+}
+.roll-piste {
+  position: relative;
+}
+.roll-piste::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--rule);
+}
+.roll-piste i {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: calc(var(--x) * 100% / 16 + 2px);
+  width: calc(var(--l) * 100% / 16 - 4px);
+  border-radius: 5px;
+  background: var(--ink);
+  opacity: 0.45;
+  transition: opacity 160ms ease;
+}
+.roll-piste i.on {
+  opacity: 1;
+}
+.roll-vide {
+  margin: 0;
+  padding-top: 6px;
+  font-size: var(--t-meta);
+  color: var(--ink-faint);
 }
 .filtre {
   position: relative;

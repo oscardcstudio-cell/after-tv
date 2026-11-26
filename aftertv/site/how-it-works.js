@@ -874,6 +874,25 @@ const demiTon = (n) => {
   const e = noteEn(n);
   return e ? (DEMI_TONS[e] ?? null) : null;
 };
+function lignesMelodie(suite) {
+  if (!suite) return [];
+  const pas = String(suite)
+    .trim()
+    .split(/\s+/)
+    .slice(0, 16)
+    .map((x) => (x === '·' ? null : noteEn(x)));
+  const notes = [...new Set(pas.filter(Boolean))].sort((a, b) => (DEMI_TONS[b] ?? 0) - (DEMI_TONS[a] ?? 0));
+  return notes.map((note) => {
+    const traits = [];
+    pas.forEach((n, i) => {
+      if (n !== note) return;
+      const der = traits[traits.length - 1];
+      if (der && der[0] + der[1] === i) der[1] += 1;
+      else traits.push([i, 1]);
+    });
+    return { note, traits };
+  });
+}
 function noteDuTemps(suite, temps) {
   if (!suite || !Number.isInteger(temps)) return null;
   const pas = String(suite).trim().split(/\s+/);
@@ -2300,8 +2319,26 @@ async function demarrer() {
                 h('span', { class: 'pole-nom', text: 'Melody, this bar' }),
                 h('span', { class: 'pole-mot' }),
               ),
-              h('div', { class: 'roll' }, h('div', { class: 'roll-notes' }), h('i', { class: 'roll-temps' })),
-              h('small', { class: 'sv-leg', text: 'one column per sixteenth, low notes at the bottom' }),
+              h(
+                'div',
+                { class: 'roll' },
+                h('div', { class: 'roll-noms' }),
+                h(
+                  'div',
+                  { class: 'roll-pistes' },
+                  h(
+                    'div',
+                    { class: 'roll-nums' },
+                    [1, 2, 3, 4].map((n2) => h('span', { text: n2 })),
+                  ),
+                  h('i', { class: 'roll-temps' }),
+                  h('div', { class: 'roll-lignes' }),
+                ),
+              ),
+              h('small', {
+                class: 'sv-leg',
+                text: 'beats 1 to 4, left to right · one line per note, highest on top · a long mark is a held note',
+              }),
             ),
             h(
               'div',
@@ -2356,18 +2393,33 @@ async function demarrer() {
         .filter(Boolean)
         .join(' · ') || 'not heard yet',
     );
-    const roll = sig.querySelector('.roll-notes');
-    const pas = String(f.suite ?? '')
-      .trim()
-      .split(/\s+/);
-    bloc(roll, f.suite ?? '', () =>
-      pas.map((x, i) => {
-        const d = x === '·' ? null : demiTon(x);
-        return d == null ? null : h('i', { style: `--x:${i};--y:${d}` });
-      }),
+    const lignes = lignesMelodie(f.suite);
+    const cleRoll = f.suite == null ? 'attente' : String(f.suite);
+    bloc(sig.querySelector('.roll-noms'), cleRoll, () => lignes.map((l) => h('span', { text: l.note })));
+    bloc(sig.querySelector('.roll-lignes'), cleRoll, () =>
+      lignes.length
+        ? lignes.map((l) =>
+            h(
+              'div',
+              { class: 'roll-piste' },
+              l.traits.map(([x, n2]) =>
+                h('i', { style: `--x:${x};--l:${n2}`, 'data-de': x, 'data-a': x + n2 }),
+              ),
+            ),
+          )
+        : h('p', {
+            class: 'roll-vide',
+            text: f.suite == null ? 'waiting for the sound' : 'no melody in this bar',
+          }),
     );
-    if (Number.isInteger(v.temps))
+    if (Number.isInteger(v.temps)) {
       sig.querySelector('.roll-temps').style.transform = `translateX(${(v.temps - 1) * 100}%)`;
+      const de = (v.temps - 1) * 4,
+        a = v.temps * 4;
+      sig
+        .querySelectorAll('.roll-piste i')
+        .forEach((t) => t.classList.toggle('on', +t.dataset.de < a && +t.dataset.a > de));
+    }
     texte(
       sig.querySelector('.sv-melodie .pole-mot'),
       suiteEn(f.suite)
@@ -4106,6 +4158,7 @@ export {
   horloge,
   journalCourt,
   jusqua,
+  lignesMelodie,
   matriceTags,
   motEn,
   nomMode,

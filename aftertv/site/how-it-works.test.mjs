@@ -18,6 +18,7 @@ import {
   nomMotif,
   accordEn,
   suiteEn,
+  lignesMelodie,
   tonaliteEn,
   tagSonEn,
   tagEn,
@@ -396,4 +397,18 @@ test('matriceTags : ce que toutes partagent se dit une fois, le reste trié par 
   ]);
   assert.deepEqual(matriceTags([{ communs: ['a', 'b'] }]).tous, []);
   assert.deepEqual(matriceTags([]), { tous: [], autres: [] });
+});
+test('mélodie : une ligne par note, la plus aiguë en haut, les notes répétées fondues en une note tenue', () => {
+  const l = lignesMelodie('do do · mi · · sol sol sol · · · do · · ·');
+  assert.deepEqual(
+    l.map((x) => x.note),
+    ['G', 'E', 'C'],
+  );
+  assert.deepEqual(l.find((x) => x.note === 'C').traits, [
+    [0, 2],
+    [12, 1],
+  ]);
+  assert.deepEqual(l.find((x) => x.note === 'G').traits, [[6, 3]]);
+  assert.deepEqual(lignesMelodie('· · · ·'), []);
+  assert.deepEqual(lignesMelodie(null), []);
 });
