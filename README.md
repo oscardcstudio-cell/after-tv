@@ -20,6 +20,10 @@ The detected section drives the edit: breaks, drops and suspensions each get the
 
 No open-source real-time drop detector turned up when this was built, because the published work is offline. This one is built for house and techno. Its limit is clear: it is tuned for kick-driven dance music, and it errs most on intros where the kick comes and goes.
 
+## TouchDesigner
+
+The listening and the editor also come as TouchDesigner bricks, in `touchdesigner/`. There are five: kick, a beat grid locked on the kick, break/drop, the full ear (song parts, phrase, drop countdown, fine listening) and the editor. Each one does what TouchDesigner has no native operator for, and plugs into native ones (Audio Device In, Beat CHOP, Ableton Link, `audioAnalysis`, Movie File In). You can also run the ear in its own process and receive it over OSC. See `touchdesigner/README.md`.
+
 ## What it does
 
 - **Listens in the browser.** Tempo, kick, song structure (intro, verse, build, chorus, break, outro) and voice versus instruments are computed on your machine. The analysis modules are Python, run by Pyodide (`scripts/beatgrid`), with a JavaScript engine on top (`aftertv/site/moteur.js`, `aftertv/site/montage.js`).

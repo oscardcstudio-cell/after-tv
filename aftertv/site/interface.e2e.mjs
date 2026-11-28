@@ -602,10 +602,11 @@ try {
           p === document.getElementById('panneau').lastElementChild &&
           !!p.querySelector('#github-lien') &&
           !!p.querySelector('#retour-bouton') &&
+          /\/after-tv\/tree\/main\/touchdesigner$/.test(p.querySelector('#touchdesigner-lien')?.href || '') &&
           !document.querySelector('.tete-panneau #retour-bouton')
         );
       }),
-      'GitHub et Feedback tout en bas du volet',
+      'GitHub, TouchDesigner et Feedback tout en bas du volet',
     );
     await page.click("[data-section='tv'] summary");
     await page.click("[data-section='apropos'] summary");
